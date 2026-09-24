@@ -45,6 +45,10 @@ data/project_overrides.csv      tracker/model.py + examples.py  ->  (feasibility
   and IRR. `site/finance.js` is a line-for-line JavaScript port so the sliders can recompute in the browser.
 - **The page** is plain HTML, CSS and JavaScript: no framework, no libraries, no network requests, and light and
   dark themes. Charts are hand-built SVG with hover and keyboard tooltips and a table view for each.
+- **The design** matches [willmcnulty.github.io](https://willmcnulty.github.io/): UVA Blue and Orange, system fonts.
+  Chart colors come from UVA's brand palette (Link Blue, Orange, Cyan, Green), stacked in an order where every pair
+  of neighbors passes colorblind-separation checks, with darker steps of the same hues for dark mode. There are no
+  UVA logos or marks; the site is independent.
 
 ## How it's checked
 
