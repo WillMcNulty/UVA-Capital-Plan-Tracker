@@ -5,249 +5,336 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UVA Capital Plan Tracker</title>
 <meta name="description" content="An independent student analysis of the University of Virginia's public Major Capital Plans, 2021-2026: funding mix, project budgets across years, and a feasibility model.">
+<meta name="theme-color" content="#232d4b">
 <style>
+  /* Same design language as willmcnulty.github.io: UVA Blue and UVA Orange, system fonts only.
+     Chart series colors (--s1..--s4) are UVA brand colors in light mode (Link Blue, Orange, Cyan, Green) and
+     darker steps of the same hues in dark mode; both sets pass the dataviz colorblind checks as ordered
+     (State GF, Debt, Gifts, Institutional) against these exact panel colors. */
   :root {
     color-scheme: light;
-    --page: #f9f9f7;
-    --surface: #fcfcfb;
-    --ink: #0b0b0b;
-    --ink-2: #52514e;
-    --muted: #898781;
-    --grid: #e1e0d9;
-    --axis: #c3c2b7;
-    --ring: rgba(11, 11, 11, 0.10);
-    --wash: rgba(11, 11, 11, 0.04);
-    --accent: #2a78d6;
-    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
-    --up: #2a78d6; --down: #e34948;
-    --tip-bg: #ffffff;
+    --page: #f6f7fb; --surface: #ffffff; --ink: #141b33; --ink-2: #4d5876; --muted: #667091;
+    --line: #d9deeb; --grid: #e6e9f2; --axis: #c3c9da;
+    --navy: #232d4b; --orange: #e57200; --orange-ink: #141b33; --orange-tint: #fff0df; --blue-tint: #e6ebf6;
+    --band: #232d4b; --band-ink: #ffffff; --band-muted: #c6cfe8; --link: #232d4b;
+    --wash: rgba(35, 45, 75, 0.05); --ring: rgba(20, 27, 51, 0.08); --tip-bg: #ffffff;
+    --s1: #495e9d; --s2: #e57200; --s3: #009fdf; --s4: #62bb46;
+    --up: #e57200; --down: #495e9d;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
-      --grid: #2c2c2a; --axis: #383835; --ring: rgba(255, 255, 255, 0.10); --wash: rgba(255, 255, 255, 0.05);
-      --accent: #3987e5;
-      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
-      --up: #3987e5; --down: #e66767; --tip-bg: #262625;
+      --page: #0d1120; --surface: #161c30; --ink: #eef1fa; --ink-2: #a6b1cf; --muted: #8c97b8;
+      --line: #2b3454; --grid: #232b45; --axis: #34406a;
+      --navy: #aebdf0; --orange: #ff8f2e; --orange-tint: #2a1e12; --blue-tint: #1e2746;
+      --band: #1a2240; --band-muted: #b9c4e4; --link: #b6c4f5;
+      --wash: rgba(174, 189, 240, 0.07); --ring: rgba(174, 189, 240, 0.12); --tip-bg: #1e2640;
+      --s1: #6f86e0; --s2: #d0650a; --s3: #1f9fd9; --s4: #4e9a30;
+      --up: #d0650a; --down: #6f86e0;
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
-    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255, 255, 255, 0.10); --wash: rgba(255, 255, 255, 0.05);
-    --accent: #3987e5;
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
-    --up: #3987e5; --down: #e66767; --tip-bg: #262625;
+    --page: #0d1120; --surface: #161c30; --ink: #eef1fa; --ink-2: #a6b1cf; --muted: #8c97b8;
+    --line: #2b3454; --grid: #232b45; --axis: #34406a;
+    --navy: #aebdf0; --orange: #ff8f2e; --orange-tint: #2a1e12; --blue-tint: #1e2746;
+    --band: #1a2240; --band-muted: #b9c4e4; --link: #b6c4f5;
+    --wash: rgba(174, 189, 240, 0.07); --ring: rgba(174, 189, 240, 0.12); --tip-bg: #1e2640;
+    --s1: #6f86e0; --s2: #d0650a; --s3: #1f9fd9; --s4: #4e9a30;
+    --up: #d0650a; --down: #6f86e0;
   }
 
   * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--page); color: var(--ink);
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.55 var(--sans); }
+  a { color: var(--link); text-underline-offset: 3px; }
+  a:hover { color: var(--orange); }
+  :focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+  .wrap { max-width: 1080px; margin-inline: auto; padding-inline: 20px; }
+
+  /* navy bands */
+  .band { background: var(--band); color: var(--band-ink); }
+  .topbar .wrap { display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between; align-items: baseline; padding-block: 16px; }
+  .topbar strong { font: 600 18px var(--serif); letter-spacing: 0.01em; }
+  .topbar nav { display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; font-weight: 600; }
+  .topbar nav a { color: var(--band-muted); text-decoration: none; }
+  .topbar nav a:hover { color: var(--orange); }
+  .hero { border-bottom: 8px solid var(--orange); }
+  .hero .wrap { padding-block: 52px 46px; }
+  .kicker { font: 700 12px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: #ff8f2e; margin-bottom: 14px; } /* 5.95:1 on the navy band; UVA Orange is 4.35:1, short of 4.5 for small text */
+  .hero h1 { font: 600 clamp(32px, 5.4vw, 52px)/1.08 var(--serif); letter-spacing: -0.015em; margin: 0 0 18px; max-width: 19ch; text-wrap: balance; }
+  .hero h1 .hl { color: var(--orange); }
+  .hero p { max-width: 64ch; margin: 0; color: var(--band-muted); font-size: 17px; }
+  .hero .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 44px; align-items: center; }
+  .glance { margin: 0; padding: 16px 18px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 16px; background: rgba(255, 255, 255, 0.06); display: grid; gap: 12px; }
+  .glance dt { font: 800 11px var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: #ff8f2e; }
+  .glance dd { margin: 3px 0 0; font-size: 14px; line-height: 1.45; color: var(--band-ink); }
+  @media (max-width: 860px) { .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; } .glance { max-width: 460px; } }
+  .btn { display: inline-block; padding: 10px 18px; border: 2px solid var(--band-ink); border-radius: 6px; font-weight: 700; font-size: 14px; text-decoration: none; color: var(--band-ink); }
+  .btn:hover { background: var(--band-ink); color: #232d4b; }
+  .btn.primary { background: var(--orange); border-color: var(--orange); color: var(--orange-ink); }
+  .btn.primary:hover { filter: brightness(1.08); background: var(--orange); color: var(--orange-ink); }
+
+  /* headline numbers, same as the portfolio's evidence strip */
+  .evidence { background: var(--orange-tint); border-bottom: 1px solid var(--line); }
+  .evidence .wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px 26px; padding-block: 26px; }
+  .stat { display: flex; flex-direction: column; }
+  .stat .value { order: -1; font: 700 30px/1.1 var(--mono); color: var(--navy); font-variant-numeric: tabular-nums; }
+  .stat .value::after { content: ""; display: block; width: 28px; height: 4px; background: var(--orange); margin-top: 8px; }
+  .stat .label { margin-top: 8px; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .stat .note { font-size: 12.5px; color: var(--ink-2); }
+
+  /* tabs */
+  .tabs { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: 0 1px 0 var(--ring); }
+  .tabs .wrap { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .tabs .wrap::-webkit-scrollbar { display: none; }
+  .tabs button {
+    font: 700 13px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; background: none; border: 0;
+    color: var(--ink-2); padding: 15px 14px 12px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap;
   }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
-  header { padding: 28px 0 8px; }
-  header h1 { margin: 0; font-size: 26px; font-weight: 650; letter-spacing: -0.01em; }
-  header p { margin: 4px 0 0; color: var(--ink-2); max-width: 70ch; }
-  nav { display: flex; gap: 4px; margin: 18px 0 20px; border-bottom: 1px solid var(--grid); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
-  nav::-webkit-scrollbar { display: none; }
-  nav button {
-    font: inherit; background: none; border: 0; color: var(--ink-2); padding: 10px 14px; cursor: pointer;
-    border-bottom: 2px solid transparent; white-space: nowrap;
-  }
-  nav button:hover { color: var(--ink); background: var(--wash); }
-  nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+  .tabs button:hover { color: var(--navy); }
+  .tabs button[aria-selected="true"] { color: var(--navy); border-bottom-color: var(--orange); }
+  main { padding-block: 30px 40px; }
   section[hidden] { display: none; }
 
-  .card {
-    background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 1px var(--ring);
-    padding: 18px 20px; margin-bottom: 18px;
-  }
-  .card h2 { margin: 0 0 2px; font-size: 17px; font-weight: 600; }
-  .card .sub { margin: 0 0 12px; color: var(--ink-2); font-size: 13.5px; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 18px; }
-  .tile { background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 1px var(--ring); padding: 14px 16px; }
-  .tile .label { color: var(--ink-2); font-size: 13px; }
-  .tile .value { font-size: 26px; font-weight: 600; margin-top: 2px; }
-  .tile .note { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  /* cards */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; margin-bottom: 20px; }
+  .card h2 { font: 600 22px/1.25 var(--serif); color: var(--navy); margin: 0 0 4px; }
+  .card .sub { margin: 0 0 14px; color: var(--ink-2); font-size: 14px; max-width: 80ch; }
+  .card .stat { background: var(--page); border: 1px solid var(--line); border-top: 4px solid var(--navy); border-radius: 8px; padding: 14px 16px; }
+  .card .stat:nth-child(even) { border-top-color: var(--orange); }
+  .card .stat .value::after { display: none; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
 
+  /* controls */
   .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
-  .row label { font-size: 13px; color: var(--ink-2); display: flex; gap: 6px; align-items: center; }
+  .row label { font-size: 13px; font-weight: 600; color: var(--ink-2); display: flex; gap: 6px; align-items: center; }
   input[type="search"], select {
     font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
-    border: 1px solid var(--axis); border-radius: 8px; padding: 6px 10px;
+    border: 1px solid var(--axis); border-radius: 6px; padding: 7px 10px;
   }
   input[type="search"] { min-width: 220px; flex: 1 1 220px; }
-  .seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 8px; overflow: hidden; }
-  .seg button { font: inherit; font-size: 13px; background: var(--surface); color: var(--ink-2); border: 0; padding: 5px 12px; cursor: pointer; }
-  .seg button + button { border-left: 1px solid var(--axis); }
-  .seg button[aria-pressed="true"] { background: var(--wash); color: var(--ink); font-weight: 600; }
-  .linkbtn { font: inherit; font-size: 13px; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; }
+  .seg { display: inline-flex; border: 2px solid var(--navy); border-radius: 6px; overflow: hidden; }
+  .seg button { font: 700 13px var(--sans); background: var(--surface); color: var(--navy); border: 0; padding: 6px 13px; cursor: pointer; }
+  .seg button + button { border-left: 2px solid var(--navy); }
+  .seg button[aria-pressed="true"] { background: var(--navy); color: var(--surface); }
+  .linkbtn { font: 700 13px var(--sans); background: none; border: 0; color: var(--link); cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+  .linkbtn:hover { color: var(--orange); }
 
-  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--ink-2); margin: 4px 0 8px; }
+  /* charts */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--ink-2); margin: 4px 0 10px; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
   svg { display: block; width: 100%; height: auto; overflow: visible; }
-  svg text { font-family: inherit; }
+  svg text { font-family: var(--sans); }
   .mark { cursor: default; outline: none; }
-  .mark:hover, .mark:focus-visible { filter: brightness(1.12); }
+  .mark:hover, .mark:focus-visible { filter: brightness(1.1); }
   .mark:focus-visible { stroke: var(--ink); stroke-width: 1.5; }
-
   #tip {
     position: fixed; pointer-events: none; z-index: 10; background: var(--tip-bg); color: var(--ink);
-    border-radius: 8px; box-shadow: 0 0 0 1px var(--ring), 0 6px 20px rgba(0, 0, 0, 0.14);
-    padding: 8px 10px; font-size: 12.5px; min-width: 150px; display: none;
+    border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(13, 17, 32, 0.18);
+    padding: 9px 11px; font-size: 12.5px; min-width: 160px; display: none;
   }
-  #tip .t { color: var(--ink-2); margin-bottom: 4px; }
-  #tip .r { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
-  #tip .r b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  #tip .t { color: var(--ink-2); margin-bottom: 4px; font-weight: 600; }
+  #tip .r { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+  #tip .r b { font: 700 12.5px var(--mono); font-variant-numeric: tabular-nums; }
   #tip .k { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
-  #tip .k i { width: 10px; height: 2px; display: inline-block; border-radius: 1px; }
+  #tip .k i { width: 10px; height: 3px; display: inline-block; border-radius: 1px; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
-  th { color: var(--ink-2); font-weight: 600; font-size: 12.5px; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* tables, same as the portfolio's results table */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font: 800 11px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); padding: 8px 8px 7px; border-bottom: 2px solid var(--line); }
+  td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td.num { font: 13.5px var(--mono); font-variant-numeric: tabular-nums; }
   tbody tr.pick { cursor: pointer; }
   tbody tr.pick:hover { background: var(--wash); }
-  tbody tr.pick[aria-selected="true"] { background: var(--wash); box-shadow: inset 3px 0 0 var(--accent); }
+  tbody tr.pick[aria-selected="true"] { background: var(--blue-tint); box-shadow: inset 4px 0 0 var(--orange); }
   .tablewrap { overflow-x: auto; }
-  .projects-scroll { max-height: 520px; overflow: auto; }
+  .projects-scroll { max-height: 540px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
   .projects-scroll thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
-  details.tableview { margin-top: 10px; }
-  details.tableview summary { cursor: pointer; color: var(--accent); font-size: 13px; }
-  .badge { font-size: 11.5px; color: var(--ink-2); border: 1px solid var(--axis); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
-  .dots { display: inline-flex; gap: 3px; vertical-align: middle; }
-  .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--grid); display: inline-block; }
-  .dots i.on { background: var(--ink-2); }
-  .dots i.plan { background: none; box-shadow: inset 0 0 0 1.5px var(--ink-2); }
-  .bar { display: inline-block; width: 90px; height: 10px; position: relative; vertical-align: middle; margin-right: 6px; }
-  .bar::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--axis); }
+  details.tableview { margin-top: 12px; }
+  details.tableview summary, details.tableview summary:hover { cursor: pointer; font-weight: 700; font-size: 13.5px; color: var(--navy); }
+  details.tableview summary:hover { color: var(--orange); }
+  .badge { font: 600 11px var(--mono); background: var(--blue-tint); color: var(--navy); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+  .dots { display: inline-flex; gap: 4px; vertical-align: middle; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--grid); display: inline-block; }
+  .dots i.on { background: var(--navy); }
+  .dots i.plan { background: none; box-shadow: inset 0 0 0 2px var(--orange); }
+  .bar { display: inline-block; width: 90px; height: 10px; position: relative; vertical-align: middle; margin-right: 8px; }
+  .bar::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--axis); }
   .bar i { position: absolute; top: 0; height: 10px; }
   .muted { color: var(--muted); }
   .detail-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+  #detail { border-top: 4px solid var(--orange); }
+  #detail > p { max-width: 75ch; }
 
-  .sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 24px; margin-bottom: 8px; }
-  .slider label { display: flex; justify-content: space-between; font-size: 13.5px; }
-  .slider output { font-weight: 600; font-variant-numeric: tabular-nums; }
-  .slider input { width: 100%; accent-color: var(--accent); }
-  .slider .hint { font-size: 12px; color: var(--muted); }
-  .delta-up { color: #006300; } .delta-down { color: #b3261e; }
-  :root[data-theme="dark"] .delta-up { color: #0ca30c; } :root[data-theme="dark"] .delta-down { color: #e66767; }
+  /* feasibility */
+  #example-note { border-left: 3px solid var(--orange); padding-left: 12px; }
+  .sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 28px; margin-bottom: 10px; }
+  .slider label { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600; }
+  .slider output { font: 700 13.5px var(--mono); color: var(--navy); font-variant-numeric: tabular-nums; }
+  .slider input { width: 100%; accent-color: var(--orange); }
+  .slider .hint { font-size: 12.5px; color: var(--ink-2); }
+  .stat .value.delta-up { color: #006300; } .stat .value.delta-down { color: #b3261e; }
+  :root[data-theme="dark"] .stat .value.delta-up { color: #4cc24c; } :root[data-theme="dark"] .stat .value.delta-down { color: #ff7b72; }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .delta-up { color: #0ca30c; }
-    :root:not([data-theme="light"]) .delta-down { color: #e66767; }
+    :root:not([data-theme="light"]) .stat .value.delta-up { color: #4cc24c; }
+    :root:not([data-theme="light"]) .stat .value.delta-down { color: #ff7b72; }
   }
-  .prose { max-width: 75ch; }
-  .prose h3 { font-size: 15px; margin: 18px 0 4px; }
-  .prose p, .prose li { color: var(--ink-2); }
-  footer { color: var(--muted); font-size: 12.5px; padding: 8px 0 40px; }
-  footer a { color: var(--accent); }
+
+  /* method */
+  .prose { max-width: 78ch; }
+  .prose h2 { margin-bottom: 10px; }
+  .prose h3 { font: 800 12px var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange); margin: 20px 0 4px; }
+  .prose p { margin: 0 0 10px; color: var(--ink); }
+
+  footer.band { font-size: 14px; color: var(--band-muted); }
+  footer .wrap { padding-block: 26px 40px; display: grid; gap: 8px; }
+  footer a { color: var(--band-ink); }
+  footer a:hover { color: var(--orange); }
+
   @media (max-width: 560px) {
-    header h1 { font-size: 22px; }
-    .card { padding: 14px; }
+    .hero .wrap { padding-block: 36px 32px; }
+    .hero p { font-size: 16px; }
+    .card { padding: 16px; }
+    .stat .value { font-size: 26px; }
     .bar { width: 60px; }
     .hide-sm { display: none; }
   }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>UVA Capital Plan Tracker</h1>
-    <p>An independent student analysis of the University of Virginia's public Major Capital Plans, 2021-2026:
-      where the money comes from, how individual project budgets change from one plan to the next, and what moves a
-      project's financial feasibility. Not affiliated with or endorsed by the University.</p>
+  <header class="topbar band">
+    <div class="wrap">
+      <strong>UVA Capital Plan Tracker</strong>
+      <nav aria-label="Links">
+        <a href="https://willmcnulty.github.io/">By William McNulty</a>
+        <a href="https://github.com/WillMcNulty/UVA-Capital-Plan-Tracker">Code on GitHub</a>
+      </nav>
+    </div>
   </header>
 
-  <nav role="tablist" aria-label="Views">
-    <button role="tab" id="tab-overview" aria-controls="view-overview" aria-selected="true">Overview</button>
-    <button role="tab" id="tab-projects" aria-controls="view-projects" aria-selected="false">Projects</button>
-    <button role="tab" id="tab-feasibility" aria-controls="view-feasibility" aria-selected="false">Feasibility</button>
-    <button role="tab" id="tab-about" aria-controls="view-about" aria-selected="false">Method</button>
+  <section class="hero band" aria-labelledby="top">
+    <div class="wrap hero-grid">
+      <div>
+      <div class="kicker">UVA Major Capital Plans · 2021-2026</div>
+      <h1 id="top">How UVA pays for its buildings, <span class="hl">and how the budgets move.</span></h1>
+      <p>An independent look at six years of the University of Virginia's public capital plans: the funding mix,
+        94 projects followed through their renames, and a feasibility model you can push around. Not affiliated
+        with or endorsed by the University.</p>
+      <div class="links">
+        <a class="btn primary" href="#projects">Explore the projects</a>
+        <a class="btn" href="#feasibility">Try the feasibility model</a>
+        <a class="btn" href="#about">How it was built</a>
+      </div>
+      </div>
+      <dl class="glance" aria-label="At a glance">
+        <div><dt>The data</dt><dd>Six board-approved plans, 286 project rows, each one reconciled to the dollar against its funding sources.</dd></div>
+        <div><dt>The linking</dt><dd>94 projects followed across renames by exact, fuzzy and hand-checked matching.</dd></div>
+        <div><dt>The checks</dt><dd>Every push reruns the tests, and the browser model must match the Python model before the site deploys.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <div class="evidence" aria-label="Headline numbers"><div class="wrap" id="overview-tiles"></div></div>
+
+  <nav class="tabs" aria-label="Views">
+    <div class="wrap" role="tablist">
+      <button role="tab" id="tab-overview" aria-controls="view-overview" aria-selected="true">Overview</button>
+      <button role="tab" id="tab-projects" aria-controls="view-projects" aria-selected="false">Projects</button>
+      <button role="tab" id="tab-feasibility" aria-controls="view-feasibility" aria-selected="false">Feasibility</button>
+      <button role="tab" id="tab-about" aria-controls="view-about" aria-selected="false">Method</button>
+    </div>
   </nav>
 
-  <section id="view-overview" role="tabpanel" aria-labelledby="tab-overview">
-    <div class="tiles" id="overview-tiles"></div>
-    <div class="card">
-      <div class="detail-head">
-        <div>
-          <h2>Funding sources, by plan year</h2>
-          <p class="sub" id="funding-sub">Authorized budget across all projects in each year's plan</p>
+  <main class="wrap">
+    <section id="view-overview" role="tabpanel" aria-labelledby="tab-overview">
+      <div class="card">
+        <div class="detail-head">
+          <div>
+            <h2>Funding sources, by plan year</h2>
+            <p class="sub" id="funding-sub">Authorized budget across all projects in each year's plan</p>
+          </div>
+          <div class="seg" role="group" aria-label="Units">
+            <button type="button" data-mode="abs" aria-pressed="true">$ millions</button>
+            <button type="button" data-mode="share" aria-pressed="false">Share</button>
+          </div>
         </div>
-        <div class="seg" role="group" aria-label="Units">
-          <button type="button" data-mode="abs" aria-pressed="true">$ millions</button>
-          <button type="button" data-mode="share" aria-pressed="false">Share</button>
+        <div class="legend" id="funding-legend"></div>
+        <div id="funding-chart"></div>
+        <details class="tableview"><summary>Show as a table</summary><div class="tablewrap" id="funding-table"></div></details>
+      </div>
+      <div class="card">
+        <h2>By division</h2>
+        <p class="sub">Authorized budget in each year's plan, $ millions</p>
+        <div class="tablewrap" id="division-table"></div>
+      </div>
+    </section>
+
+    <section id="view-projects" role="tabpanel" aria-labelledby="tab-projects" hidden>
+      <div class="card">
+        <h2>Projects across the six plans</h2>
+        <p class="sub" id="projects-sub"></p>
+        <div class="row">
+          <input type="search" id="q" placeholder="Search project names, including earlier names" aria-label="Search projects">
+          <label>Division <select id="f-div"><option value="">All</option></select></label>
+          <label>Show <select id="f-show">
+            <option value="">All projects</option>
+            <option value="tracked">2+ full budgets</option>
+            <option value="grew">Budget grew</option>
+            <option value="renamed">Renamed or relinked</option>
+          </select></label>
+          <label>Sort <select id="f-sort">
+            <option value="pct">Budget change %</option>
+            <option value="latest">Latest budget</option>
+            <option value="name">Name</option>
+            <option value="years">Years in plan</option>
+          </select></label>
         </div>
+        <div class="tablewrap projects-scroll"><table id="projects-table"></table></div>
       </div>
-      <div class="legend" id="funding-legend"></div>
-      <div id="funding-chart"></div>
-      <details class="tableview"><summary>Show as a table</summary><div class="tablewrap" id="funding-table"></div></details>
-    </div>
-    <div class="card">
-      <h2>By division</h2>
-      <p class="sub">Authorized budget in each year's plan, $ millions</p>
-      <div class="tablewrap" id="division-table"></div>
-    </div>
-  </section>
+      <div class="card" id="detail" hidden></div>
+    </section>
 
-  <section id="view-projects" role="tabpanel" aria-labelledby="tab-projects" hidden>
-    <div class="card">
-      <h2>Projects across the six plans</h2>
-      <p class="sub" id="projects-sub"></p>
-      <div class="row">
-        <input type="search" id="q" placeholder="Search project names, including earlier names" aria-label="Search projects">
-        <label>Division <select id="f-div"><option value="">All</option></select></label>
-        <label>Show <select id="f-show">
-          <option value="">All projects</option>
-          <option value="tracked">2+ full budgets</option>
-          <option value="grew">Budget grew</option>
-          <option value="renamed">Renamed or relinked</option>
-        </select></label>
-        <label>Sort <select id="f-sort">
-          <option value="pct">Budget change %</option>
-          <option value="latest">Latest budget</option>
-          <option value="name">Name</option>
-          <option value="years">Years in plan</option>
-        </select></label>
+    <section id="view-feasibility" role="tabpanel" aria-labelledby="tab-feasibility" hidden>
+      <div class="card">
+        <h2>What moves a project's NPV</h2>
+        <p class="sub">Pick an example project, then move the drivers to see its net present value and internal
+          rate of return change. The model follows UVA's CE 3010 course template and reproduces the course's worked
+          example exactly (see Method).</p>
+        <div class="row">
+          <div class="seg" role="group" aria-label="Example project" id="example-pick"></div>
+        </div>
+        <p class="sub" id="example-note"></p>
+        <div class="tiles" id="feas-tiles"></div>
+        <div class="sliders" id="sliders"></div>
+        <div class="row"><button class="linkbtn" id="reset">Reset to the example</button></div>
       </div>
-      <div class="tablewrap projects-scroll"><table id="projects-table"></table></div>
-    </div>
-    <div class="card" id="detail" hidden></div>
-  </section>
-
-  <section id="view-feasibility" role="tabpanel" aria-labelledby="tab-feasibility" hidden>
-    <div class="card">
-      <h2>What moves a project's NPV</h2>
-      <p class="sub">Pick an example project, then move the drivers to see its net present value and internal
-        rate of return change. The model follows UVA's CE 3010 course template and reproduces the course's worked
-        example exactly (see Method).</p>
-      <div class="row">
-        <div class="seg" role="group" aria-label="Example project" id="example-pick"></div>
+      <div class="card">
+        <h2>Cumulative discounted cash flow</h2>
+        <p class="sub" id="cum-sub">Running total of each year's net cash flow, discounted to year 0; the last point is the NPV</p>
+        <div id="cum-chart"></div>
+        <details class="tableview"><summary>Show the yearly cash flows as a table</summary><div class="tablewrap" id="cf-table"></div></details>
       </div>
-      <p class="sub" id="example-note"></p>
-      <div class="tiles" id="feas-tiles" style="margin-bottom:12px"></div>
-      <div class="sliders" id="sliders"></div>
-      <div class="row"><button class="linkbtn" id="reset">Reset to the example</button></div>
-    </div>
-    <div class="card">
-      <h2>Cumulative discounted cash flow</h2>
-      <p class="sub" id="cum-sub">Running total of each year's net cash flow, discounted to year 0; the last point is the NPV</p>
-      <div id="cum-chart"></div>
-      <details class="tableview"><summary>Show the yearly cash flows as a table</summary><div class="tablewrap" id="cf-table"></div></details>
-    </div>
-  </section>
+    </section>
 
-  <section id="view-about" role="tabpanel" aria-labelledby="tab-about" hidden>
-    <div class="card prose" id="about"></div>
-  </section>
+    <section id="view-about" role="tabpanel" aria-labelledby="tab-about" hidden>
+      <div class="card prose" id="about"></div>
+    </section>
+  </main>
 
-  <footer id="footer"></footer>
-</div>
-<div id="tip" role="status" aria-live="polite"></div>
-<script src="data.js"></script>
-<script src="finance.js"></script>
-<script src="app.js"></script>
+  <footer class="band">
+    <div class="wrap" id="footer"></div>
+  </footer>
+  <div id="tip" role="status" aria-live="polite"></div>
+  <script src="data.js"></script>
+  <script src="finance.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

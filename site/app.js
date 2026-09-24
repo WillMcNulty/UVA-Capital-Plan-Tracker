@@ -4,9 +4,11 @@
   const D = window.DATA;
   const F = window.Finance;
   const NS = "http://www.w3.org/2000/svg";
-  const FUND = D.fund_keys;
+  // Display order, bottom of each stack first. The colors (index.html) were checked for colorblind separation in
+  // exactly this order, so a neighbor in the stack is always distinguishable; Debt, the main story, is UVA Orange.
+  const FUND = ["state_gf", "debt", "gifts", "other_funds"];
   const FUND_LABEL = D.fund_labels;
-  const FUND_VAR = { state_gf: "--s1", gifts: "--s2", debt: "--s3", other_funds: "--s4" };
+  const FUND_VAR = { state_gf: "--s1", debt: "--s2", gifts: "--s3", other_funds: "--s4" };
   const LINK_TEXT = {
     "single-name": "same name every year",
     "exact-key": "same name, spelling or punctuation differs",
@@ -116,10 +118,14 @@
     const band = iw / cats.length;
     const bw = Math.min(opts.barWidth || 24, band * 0.6);
     const GAP = 2, R = 4;
+    // Narrow columns (phones): whole-million cap labels and short sub-labels so neighbors don't collide; the
+    // exact values stay in the tooltip and the table.
+    const narrow = band < 72;
     cats.forEach((c, i) => {
       const cx = m.l + band * i + band / 2;
       svg.append(sv("text", { x: cx, y: H - m.b + 18, "text-anchor": "middle", "font-size": 12, fill: css("--ink-2") }, c.label));
-      if (c.sub) svg.append(sv("text", { x: cx, y: H - m.b + 33, "text-anchor": "middle", "font-size": 10.5, fill: css("--muted") }, c.sub));
+      const sub = narrow && c.subShort != null ? c.subShort : c.sub;
+      if (sub) svg.append(sv("text", { x: cx, y: H - m.b + 33, "text-anchor": "middle", "font-size": 10.5, fill: css("--muted") }, sub));
       if (!c.values || !totals[i]) return;
       const scale = mode === "share" ? 100 / totals[i] : 1;
       const segs = FUND.map((k) => ({ k, v: (c.values[k] || 0) * scale, raw: c.values[k] || 0 })).filter((s) => s.v > 0);
@@ -143,7 +149,8 @@
         svg.append(p);
       });
       if (mode === "abs" && opts.capLabels !== false) {
-        svg.append(sv("text", { x: cx, y: y(totals[i]) - 7, "text-anchor": "middle", "font-size": 11.5, "font-weight": 600, fill: css("--ink") }, fmtM(totals[i])));
+        svg.append(sv("text", { x: cx, y: y(totals[i]) - 7, "text-anchor": "middle", "font-size": 11.5, "font-weight": 600, fill: css("--ink") },
+          narrow ? "$" + Math.round(totals[i]).toLocaleString("en-US") + "M" : fmtM(totals[i])));
       }
     });
     host.append(svg);
@@ -190,7 +197,7 @@
     ];
     const host = $("#overview-tiles"); host.replaceChildren();
     for (const t of tiles) {
-      const d = el("div", { class: "tile" });
+      const d = el("div", { class: "stat" });
       d.append(el("div", { class: "label" }, t.label), el("div", { class: "value" }, t.value), el("div", { class: "note" }, t.note));
       host.append(d);
     }
@@ -308,7 +315,8 @@
     const chart = el("div"); host.append(chart);
     const cats = years.map((y) => {
       const r = p.rows.find((x) => x.year === y);
-      return { label: String(y), sub: r ? (r.phase === "planning" ? "planning" : "") : "not listed", title: r ? `${y}: ${r.name}` : String(y), values: r ? r : null };
+      return { label: String(y), sub: r ? (r.phase === "planning" ? "planning" : "") : "not listed",
+        subShort: r ? (r.phase === "planning" ? "plan." : "") : "—", title: r ? `${y}: ${r.name}` : String(y), values: r ? r : null };
     });
     stackedColumns(chart, cats, "abs", { label: `Budget by funding source for ${p.id}`, height: 240 });
     const tw = el("div", { class: "tablewrap" }); host.append(tw);
@@ -399,7 +407,7 @@
     ];
     const th = $("#feas-tiles"); th.replaceChildren();
     for (const t of tiles) {
-      const d = el("div", { class: "tile" });
+      const d = el("div", { class: "stat" });
       const v = el("div", { class: "value" + (t.delta > 0 ? " delta-up" : t.delta < 0 ? " delta-down" : "") }, t.value);
       d.append(el("div", { class: "label" }, t.label), v, el("div", { class: "note" }, t.note));
       th.append(d);
@@ -490,9 +498,10 @@
     ];
     a.replaceChildren(...blocks.map(([t, x]) => el(t, {}, x)));
     const f = $("#footer");
-    f.replaceChildren(document.createTextNode("Independent student project; not affiliated with or endorsed by the University of Virginia. Source: " + D.source + ". "));
-    const link = el("a", { href: "https://github.com/WillMcNulty/UVA-Capital-Plan-Tracker" }, "Code and data on GitHub");
-    f.append(link, document.createTextNode("."));
+    const line2 = el("div", {}, "Source: " + D.source + ". ");
+    line2.append(el("a", { href: "https://github.com/WillMcNulty/UVA-Capital-Plan-Tracker" }, "Code and data on GitHub"),
+      document.createTextNode(" · "), el("a", { href: "https://willmcnulty.github.io/" }, "More projects by William McNulty"));
+    f.replaceChildren(el("div", {}, "Independent student project; not affiliated with or endorsed by the University of Virginia."), line2);
   }
 
   // ---- tabs & boot ------------------------------------------------------------------------------------------
@@ -522,7 +531,10 @@
   }
   window.addEventListener("hashchange", () => {
     const h = location.hash.slice(1);
-    if (["overview", "projects", "feasibility", "about"].includes(h)) select(h, false);
+    if (["overview", "projects", "feasibility", "about"].includes(h)) {
+      select(h, false);
+      document.querySelector(".tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   });
   let rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderVisible, 120); });
