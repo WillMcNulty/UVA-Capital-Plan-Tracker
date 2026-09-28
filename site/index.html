@@ -6,6 +6,7 @@
 <title>UVA Capital Plan Tracker</title>
 <meta name="description" content="An independent student analysis of the University of Virginia's public Major Capital Plans, 2021-2026: funding mix, project budgets across years, and a feasibility model.">
 <meta name="theme-color" content="#232d4b">
+<script src="theme.js"></script>
 <style>
   /* Same design language as willmcnulty.github.io: UVA Blue and UVA Orange, system fonts only.
      Chart series colors (--s1..--s4) are UVA brand colors in light mode (Link Blue, Orange, Cyan, Green) and
@@ -62,6 +63,8 @@
   .topbar nav { display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; font-weight: 600; }
   .topbar nav a { color: var(--band-muted); text-decoration: none; }
   .topbar nav a:hover { color: var(--orange); }
+  .theme-btn { font: 600 13px var(--sans); color: var(--band-muted); background: none; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 999px; padding: 2px 11px; cursor: pointer; }
+  .theme-btn:hover { color: var(--orange); border-color: var(--orange); }
   .hero { border-bottom: 8px solid var(--orange); }
   .hero .wrap { padding-block: 52px 46px; }
   .kicker { font: 700 12px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: #ff8f2e; margin-bottom: 14px; } /* 5.95:1 on the navy band; UVA Orange is 4.35:1, short of 4.5 for small text */
@@ -216,6 +219,7 @@
       <nav aria-label="Links">
         <a href="https://willmcnulty.github.io/">By William McNulty</a>
         <a href="https://github.com/WillMcNulty/UVA-Capital-Plan-Tracker">Code on GitHub</a>
+        <button type="button" class="theme-btn" data-theme-toggle>◐ Auto</button>
       </nav>
     </div>
   </header>

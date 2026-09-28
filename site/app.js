@@ -538,7 +538,8 @@
   });
   let rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderVisible, 120); });
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderVisible);
+  // theme.js fires "themechange" for the theme button and, in Auto, for device changes; charts read colors when drawn.
+  window.addEventListener("themechange", renderVisible);
 
   renderOverview();
   renderProjects();
