@@ -64,5 +64,30 @@ class Linking(unittest.TestCase):
             self.assertLess(abs(parts - r["total"]), 0.01, f"{r['year']} {r['name']}")
 
 
+class Inflation(unittest.TestCase):
+    def setUp(self):
+        from tracker import inflation
+        self.inflation = inflation
+        self.D = inflation.Deflator(2026)
+
+    def test_every_plan_year_has_both_june_values(self):
+        idx = self.inflation.load()
+        for key in ("school", "health"):
+            for y in range(2021, 2027):
+                self.assertIn(y, idx[key], f"{key} June {y}")
+
+    def test_factors(self):
+        self.assertEqual(self.D.factor("Academic Division", 2026), 1.0)
+        self.assertAlmostEqual(self.D.factor("Academic Division", 2021), 237.482 / 176.9, places=6)
+        self.assertAlmostEqual(self.D.factor("College at Wise", 2021), 237.482 / 176.9, places=6)
+        self.assertAlmostEqual(self.D.factor("UVA Health System", 2021), 164.277 / 123.8, places=6)
+
+    def test_flat_nominal_budget_loses_real_value(self):
+        # a budget unchanged from 2021 to 2026 is worth less in 2026 dollars
+        first = self.D.real(100, "Academic Division", 2021)
+        last = self.D.real(100, "Academic Division", 2026)
+        self.assertLess(last, first)
+
+
 if __name__ == "__main__":
     unittest.main()

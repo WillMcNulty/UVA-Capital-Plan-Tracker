@@ -14,6 +14,10 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
 - **Budgets that move mostly go up.** Of 64 projects with two or more full budgets, 23 increased, 40 stayed flat
   and 1 fell. Together their budgets rose 9.3%, and the median increase was 16.6%. Most revisions came before
   construction started, and the increases were paid with debt while gifts fell away.
+- **After construction-cost inflation, most budgets shrank.** In 2026 dollars (BLS construction price indexes),
+  the same 64 budgets fell 7.5% together, and 52 of them lost buying power. The 40 that never changed lost a median
+  13.5%. Budgets often build in escalation, and a national index isn't UVA's own costs, so read this as a rough
+  measure.
 - **A 16.6% overrun is expensive.** On the course's example project, an overrun the size of that median cuts the
   NPV from $5.04M to $2.28M.
 
@@ -21,7 +25,8 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
 
 - **Overview:** the plan total and funding mix by year, in dollars or shares, with a table view.
 - **Projects:** all 94 projects, searchable by any name they've had, filterable, with each project's budget and
-  funding year by year and how each year's entry was linked to the others.
+  funding year by year and how each year's entry was linked to the others. A switch shows every figure as
+  published or in 2026 dollars.
 - **Feasibility:** a cash-flow model with sliders (discount rate, revenue and cost growth, first-year revenue,
   cost overrun, construction delay) on two example projects. The first is from UVA's CE 3010 course, used with
   attribution; the second is made up.
@@ -32,6 +37,7 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
 ```
 data/capital_plans.csv  ->  tracker/linking.py  ->  build.py  ->  site/data.js  ->  site/ (static page)
 data/project_overrides.csv      tracker/model.py + examples.py  ->  (feasibility cases)
+data/construction_ppi.csv  ->  tracker/inflation.py  ->  (2026-dollar figures)
 ```
 
 - **Linking projects across years** (`tracker/linking.py`). Project names drift between plans: PDF spacing damage,
@@ -57,7 +63,8 @@ On every push, GitHub Actions rebuilds the data, runs the tests, and only then d
 - `build.py` refuses to write the site if the totals stop matching the findings above (yearly totals, funding
   shares, project and drift counts).
 - `tests/test_model.py`: the model reproduces the course example's printed values (cash flows to the dollar, NPV
-  within $5 of the slide), every data row reconciles to its funding sources, and the linking gives 94 projects.
+  within $5 of the slide), every data row reconciles to its funding sources, the linking gives 94 projects, and the construction indexes
+  cover every plan year with the expected deflators.
 - `tests/parity.js`: the JavaScript model matches the Python model on 26 cases (both examples, every slider driver
   at a low and a high setting, a 30% overrun, a 3-year delay), to within a millionth of a dollar.
 - CI also fails if the committed `site/data.js` isn't what a fresh build produces.

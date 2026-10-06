@@ -17,6 +17,7 @@ from collections import defaultdict
 from dataclasses import asdict
 
 from tracker import examples as ex
+from tracker import inflation
 from tracker import linking as lk
 from tracker import model as md
 
@@ -50,6 +51,7 @@ def projects_and_years():
     drift = {d["pid"]: d for d in lk.drift_table(tracks, conf_of)}
 
     years = sorted({r["year"] for r in rows})
+    deflate = inflation.Deflator(max(years))  # real figures are in dollars of the latest plan year
     funding = {y: {c: 0.0 for c in FUND} for y in years}
     division = {y: defaultdict(float) for y in years}
     for r in rows:
@@ -61,6 +63,8 @@ def projects_and_years():
     for pid, rs in sorted(tracks.items()):
         last = rs[-1]
         d = drift.get(pid)
+        if d is not None:
+            d.update(real_drift(d, rs, deflate))  # the summary below reads these too
         projects.append({
             "id": pid,
             "division": last["division"],
@@ -70,13 +74,25 @@ def projects_and_years():
             "latest_total": round(last["total"], 3),
             "rows": [{"year": r["year"], "phase": r["phase"], "link": r["link"], "status": r["status"],
                       "name": r["name"], "total": round(r["total"], 3),
+                      # multiply by this to get the latest plan year's dollars (construction-cost inflation)
+                      "real_factor": round(deflate.factor(r["division"], r["year"]), 6),
                       **{c: round(r[c], 3) for c in FUND}} for r in rs],
             "drift": None if d is None else {
                 "first_year": d["first_year"], "last_year": d["last_year"], "n_years": d["n_years"],
                 "first": round(d["first"], 3), "last": round(d["last"], 3), "delta": round(d["delta"], 3),
-                "pct": round(d["pct"], 2), "revisions": len(d["revisions"]), "peak": round(d["peak"], 3)},
+                "pct": round(d["pct"], 2), "revisions": len(d["revisions"]), "peak": round(d["peak"], 3),
+                "first_real": d["first_real"], "last_real": d["last_real"], "pct_real": d["pct_real"]},
         })
     return rows, years, funding, division, projects, list(drift.values())
+
+
+def real_drift(d, rows, deflate):
+    """The same first-to-last budget change in real dollars (both ends in the latest plan year's dollars)."""
+    by_year = {r["year"]: r for r in rows}
+    first = deflate.real(d["first"], by_year[d["first_year"]]["division"], d["first_year"])
+    last = deflate.real(d["last"], by_year[d["last_year"]]["division"], d["last_year"])
+    return {"first_real": round(first, 3), "last_real": round(last, 3),
+            "pct_real": round((last - first) / first * 100, 2)}
 
 
 def drift_summary(drift):
@@ -89,7 +105,21 @@ def drift_summary(drift):
             "unchanged": len(conf) - len(up) - len(down),
             "first_sum": round(first, 1), "last_sum": round(last, 1),
             "net_pct": round((last - first) / first * 100, 1),
-            "median_increase_pct": round(statistics.median(d["pct"] for d in up), 1)}
+            "median_increase_pct": round(statistics.median(d["pct"] for d in up), 1),
+            **real_summary(conf, up)}
+
+
+def real_summary(conf, up):
+    """How the drift findings look after construction-cost inflation."""
+    first = sum(d["first_real"] for d in conf)
+    last = sum(d["last_real"] for d in conf)
+    flat = [d for d in conf if abs(d["delta"]) <= 0.005 and d["last_year"] > d["first_year"]]
+    return {"net_pct_real": round((last - first) / first * 100, 1),
+            "median_increase_pct_real": round(statistics.median(d["pct_real"] for d in up), 1),
+            "grew_real": sum(1 for d in conf if d["pct_real"] > 0.5),
+            "shrank_real": sum(1 for d in conf if d["pct_real"] < -0.5),
+            "flat_nominal_lost_real": len(flat),
+            "flat_nominal_median_real_pct": round(statistics.median(d["pct_real"] for d in flat), 1) if flat else None}
 
 
 def check(years, funding, projects, summary):

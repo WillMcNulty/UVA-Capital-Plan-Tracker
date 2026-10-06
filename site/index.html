@@ -84,7 +84,7 @@
 
   /* headline numbers, same as the portfolio's evidence strip */
   .evidence { background: var(--orange-tint); border-bottom: 1px solid var(--line); }
-  .evidence .wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px 26px; padding-block: 26px; }
+  .evidence .wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 18px 26px; padding-block: 26px; }
   .stat { display: flex; flex-direction: column; }
   .stat .value { order: -1; font: 700 30px/1.1 var(--mono); color: var(--navy); font-variant-numeric: tabular-nums; }
   .stat .value::after { content: ""; display: block; width: 28px; height: 4px; background: var(--orange); margin-top: 8px; }
@@ -283,8 +283,16 @@
 
     <section id="view-projects" role="tabpanel" aria-labelledby="tab-projects" hidden>
       <div class="card">
-        <h2>Projects across the six plans</h2>
-        <p class="sub" id="projects-sub"></p>
+        <div class="detail-head">
+          <div>
+            <h2>Projects across the six plans</h2>
+            <p class="sub" id="projects-sub"></p>
+          </div>
+          <div class="seg" role="group" aria-label="Dollars" id="dollars">
+            <button type="button" data-mode="nominal" aria-pressed="true">As published</button>
+            <button type="button" data-mode="real" aria-pressed="false">2026 dollars</button>
+          </div>
+        </div>
         <div class="row">
           <input type="search" id="q" placeholder="Search project names, including earlier names" aria-label="Search projects">
           <label>Division <select id="f-div"><option value="">All</option></select></label>

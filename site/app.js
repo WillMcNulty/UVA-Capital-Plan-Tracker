@@ -194,6 +194,7 @@
       { label: "Debt share of the plan", value: fmtPct(share(last, "debt")), note: `${fmtPct(share(years[0], "debt"))} in ${years[0]}; peak ${fmtPct(share(debtPeak, "debt"))} in ${debtPeak}` },
       { label: "State General Fund share", value: fmtPct(share(last, "state_gf")), note: `${fmtPct(share(years[0], "state_gf"))} in ${years[0]}` },
       { label: "Projects whose budget grew", value: `${s.increased} of ${s.tracked}`, note: `Median increase +${s.median_increase_pct}%; ${s.unchanged} unchanged, ${s.decreased} fell` },
+      { label: "After construction-cost inflation", value: fmtPct(s.net_pct_real, 1, true), note: `Net budget change in ${years[years.length - 1]} dollars (${fmtPct(s.net_pct, 1, true)} as published); ${s.shrank_real} of ${s.tracked} budgets lost buying power` },
     ];
     const host = $("#overview-tiles"); host.replaceChildren();
     for (const t of tiles) {
@@ -225,6 +226,19 @@
   // ---- projects ---------------------------------------------------------------------------------------------
   const P = D.projects;
   let selected = null;
+  // "nominal" = as published; "real" = in the latest plan year's dollars, adjusted with BLS construction price
+  // indexes (new school buildings; new health care buildings for UVA Health). See tracker/inflation.py.
+  let dollars = "nominal";
+  const REAL_YEAR = years[years.length - 1];
+  const pctOf = (d) => (dollars === "real" ? d.pct_real : d.pct);
+  const latestOf = (p) => (dollars === "real" ? p.latest_total * p.rows[p.rows.length - 1].real_factor : p.latest_total);
+  const realRow = (r) => { const o = { ...r }; for (const k of FUND) o[k] = (r[k] || 0) * r.real_factor; o.total = r.total * r.real_factor; return o; };
+  document.querySelectorAll("#dollars button").forEach((b) => b.addEventListener("click", () => {
+    dollars = b.dataset.mode;
+    document.querySelectorAll("#dollars button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    renderProjects();
+    if (selected) renderDetail(P.find((p) => p.id === selected));
+  }));
   const divs = [...new Set(P.map((p) => p.division))].sort();
   for (const d of divs) $("#f-div").append(el("option", { value: d }, d));
   const tracked = P.filter((p) => p.drift).length;
@@ -241,18 +255,18 @@
   function renderProjects() {
     const q = $("#q").value.trim(), div = $("#f-div").value, show = $("#f-show").value, sort = $("#f-sort").value;
     let list = P.filter((p) => matches(p, q) && (!div || p.division === div)
-      && (show !== "tracked" || p.drift) && (show !== "grew" || (p.drift && p.drift.delta > 0.005))
+      && (show !== "tracked" || p.drift) && (show !== "grew" || (p.drift && pctOf(p.drift) > 0.5))
       && (show !== "renamed" || renamed(p)));
-    const byPct = (p) => (p.drift ? p.drift.pct : -Infinity);
+    const byPct = (p) => (p.drift ? pctOf(p.drift) : -Infinity);
     list.sort({
-      pct: (a, b) => byPct(b) - byPct(a) || b.latest_total - a.latest_total,
-      latest: (a, b) => b.latest_total - a.latest_total,
+      pct: (a, b) => byPct(b) - byPct(a) || latestOf(b) - latestOf(a),
+      latest: (a, b) => latestOf(b) - latestOf(a),
       name: (a, b) => a.id.localeCompare(b.id),
       years: (a, b) => b.years.length - a.years.length || a.id.localeCompare(b.id),
     }[sort]);
     const t = $("#projects-table");
     const head = el("tr");
-    [["Project", ""], ["Division", "hide-sm"], ["In plan", ""], ["Latest", "num"], ["Budget change", "num"]]
+    [["Project", ""], ["Division", "hide-sm"], ["In plan", ""], [dollars === "real" ? `Latest (${REAL_YEAR} $)` : "Latest", "num"], [dollars === "real" ? `Change (${REAL_YEAR} $)` : "Budget change", "num"]]
       .forEach(([h, c]) => head.append(el("th", { class: c }, h)));
     const tb = el("tbody");
     for (const p of list) {
@@ -268,17 +282,18 @@
       const dc = el("td"); dc.append(dots);
       const ch = el("td", { class: "num" });
       if (p.drift) {
+        const pct = pctOf(p.drift);
         const bar = el("span", { class: "bar", "aria-hidden": "true" });
-        const w = Math.min(Math.abs(p.drift.pct), 150) / 150 * 45;
+        const w = Math.min(Math.abs(pct), 150) / 150 * 45;
         const i = el("i");
         i.style.width = w + "px";
-        i.style.background = p.drift.pct >= 0 ? "var(--up)" : "var(--down)";
-        i.style[p.drift.pct >= 0 ? "left" : "right"] = "50%";
-        i.style.borderRadius = p.drift.pct >= 0 ? "0 3px 3px 0" : "3px 0 0 3px";
-        if (Math.abs(p.drift.pct) > 0.005) bar.append(i);
-        ch.append(bar, document.createTextNode(Math.abs(p.drift.pct) < 0.005 ? "no change" : fmtPct(p.drift.pct, 0, true)));
+        i.style.background = pct >= 0 ? "var(--up)" : "var(--down)";
+        i.style[pct >= 0 ? "left" : "right"] = "50%";
+        i.style.borderRadius = pct >= 0 ? "0 3px 3px 0" : "3px 0 0 3px";
+        if (Math.abs(pct) > 0.005) bar.append(i);
+        ch.append(bar, document.createTextNode(Math.abs(pct) < 0.005 ? "no change" : fmtPct(pct, 0, true)));
       } else ch.append(el("span", { class: "muted" }, "—"));
-      tr.append(name, el("td", { class: "hide-sm" }, p.division), dc, el("td", { class: "num" }, p.latest_total ? fmtM(p.latest_total) : "—"), ch);
+      tr.append(name, el("td", { class: "hide-sm" }, p.division), dc, el("td", { class: "num" }, p.latest_total ? fmtM(latestOf(p)) : "—"), ch);
       const open = () => { selected = p.id; renderProjects(); renderDetail(p, true); };
       tr.addEventListener("click", open);
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
@@ -309,6 +324,7 @@
     } else {
       story = "Fewer than two full budgets in the plans, so there is no budget change to measure.";
     }
+    if (d) story += ` In ${REAL_YEAR} dollars (adjusted for construction-cost inflation): ${fmtM(d.first_real)} to ${fmtM(d.last_real)}, ${fmtPct(d.pct_real, 1, true)}.`;
     if (p.conf === "probable") story += " This project is joined to an earlier name by a probable match, so it is kept out of the site's totals.";
     host.append(el("p", {}, story));
     const leg = el("div", { class: "legend" }); fundLegend(leg); host.append(leg);
@@ -316,9 +332,9 @@
     const cats = years.map((y) => {
       const r = p.rows.find((x) => x.year === y);
       return { label: String(y), sub: r ? (r.phase === "planning" ? "planning" : "") : "not listed",
-        subShort: r ? (r.phase === "planning" ? "plan." : "") : "—", title: r ? `${y}: ${r.name}` : String(y), values: r ? r : null };
+        subShort: r ? (r.phase === "planning" ? "plan." : "") : "—", title: r ? `${y}: ${r.name}${dollars === "real" ? ` (${REAL_YEAR} dollars)` : ""}` : String(y), values: r ? (dollars === "real" ? realRow(r) : r) : null };
     });
-    stackedColumns(chart, cats, "abs", { label: `Budget by funding source for ${p.id}`, height: 240 });
+    stackedColumns(chart, cats, "abs", { label: `Budget by funding source for ${p.id}${dollars === "real" ? `, in ${REAL_YEAR} dollars` : ""}`, height: 240 });
     const tw = el("div", { class: "tablewrap" }); host.append(tw);
     table(tw, ["Year", "Name in that plan", "Status", ...FUND.map((k) => FUND_LABEL[k]), "Total", "How it was linked"],
       p.rows.map((r) => [String(r.year), r.name + (r.phase === "planning" ? " (planning authorization)" : ""), r.status,
@@ -491,6 +507,8 @@
       ["p", `Project names change between plans (spacing damage from the PDFs, added donor names, outright renames). Names are linked in three passes: an exact match on a normalized name; a fuzzy match (similarity of 0.85 or more) allowed only between names that never appear in the same plan, each checked by hand; and a short list of hand-checked overrides. The result is ${D.projects.length} projects. Links the plans don't prove are marked "probable" and kept out of every total; the project view shows how each year's entry was linked.`],
       ["h3", "Budget change"],
       ["p", `Change is measured only between years with a full project budget. Planning-and-design authorizations (usually $1.5-5M) are a different kind of number and are shown but not compared. Among ${s.tracked} projects with two or more full budgets (confirmed links only), ${s.increased} increased, ${s.unchanged} were unchanged and ${s.decreased} fell; together their budgets went from ${fmtM(s.first_sum)} to ${fmtM(s.last_sum)} (+${s.net_pct}%), and the median increase was +${s.median_increase_pct}%. Projects that never moved were also watched for fewer years on average, so "unchanged" partly means "not tracked long enough to change".`],
+      ["h3", "Adjusting for construction costs"],
+      ["p", `Construction costs rose fast over these years, so the "${REAL_YEAR} dollars" view restates every budget in ${REAL_YEAR} dollars using the Bureau of Labor Statistics producer price indexes for new building construction: new school buildings for the Academic Division and the College at Wise, new health care buildings for UVA Health, each at its June value (when the Board approves the plan). In those terms the ${s.tracked} tracked budgets went ${fmtPct(s.net_pct_real, 1, true)} overall instead of ${fmtPct(s.net_pct, 1, true)}: ${s.grew_real} kept ahead of construction costs and ${s.shrank_real} fell behind, and the ${s.flat_nominal_lost_real} budgets that never changed lost a median ${Math.abs(s.flat_nominal_median_real_pct)}% of their buying power. Two cautions: budgets are often set with some future cost escalation already built in, and a national index isn't UVA's own costs, so treat this as how far each authorized budget kept pace with the construction market, not as a measure of UVA's actual spending.`],
       ["h3", "The feasibility model"],
       ["p", `The model follows the cash-flow template from UVA's CE 3010 (Capital Projects) course: equity, loan proceeds, project expenses, revenue (effective gross income), operating costs, debt service and net cash flow each year, with NPV and IRR on the net cash flow. It reproduces the course's debt-financed example from lecture S19 (shown here with attribution) to within $1.10 of the slide's printed NPV, and it was also checked cell by cell against the course's example workbook, which isn't published here. The second example is made up for this site. The page runs a JavaScript copy of the model, tested to match the Python original on ${D.feasibility.checks.length} cases.`],
       ["h3", "Limits"],
