@@ -401,11 +401,12 @@
   }
   showExampleNote();
 
-  function currentCase() {
+  // withOverrun = false leaves the overrun slider out: the history replay supplies the overrun instead.
+  function currentCase(withOverrun = true) {
     const v = (id) => parseFloat($("#s-" + id).value);
     let c = { ...base, discount: v("discount") / 100, egi_growth: v("egi_growth") / 100, om_growth: v("om_growth") / 100,
       egi0: base.egi0 * (1 + v("egi0") / 100) };
-    c = F.overrun(c, v("overrun") / 100);
+    if (withOverrun) c = F.overrun(c, v("overrun") / 100);
     c = F.delayed(c, v("delay"));
     return c;
   }
@@ -431,10 +432,132 @@
     const disc = rows.ncf.map((v, t) => v / Math.pow(1 + c.discount, t));
     const cum = []; disc.reduce((a, v, i) => (cum[i] = a + v), 0);
     lineChart($("#cum-chart"), cum, rows.ncf, disc);
+    renderReplay(currentCase(false));
     const cols = ["equity", "loan", "expenses", "egi", "opex", "debt_service", "ncf"];
     const names = ["Equity", "Loan", "Project expenses", "Revenue (EGI)", "O&M", "Debt service", "Net cash flow"];
     table($("#cf-table"), ["Year", ...names, "Discounted", "Cumulative"],
       rows.ncf.map((_, t) => [String(t), ...cols.map((k) => (Math.abs(rows[k][t]) < 0.5 ? "—" : fmtDollarsM(rows[k][t]))), fmtDollarsM(disc[t]), fmtDollarsM(cum[t])]));
+  }
+
+  // ---- the example against UVA's own budget history ----------------------------------------------------------
+  // Every tracked project's observed budget change, applied to the example as a cost overrun. With one source of
+  // uncertainty and 64 observations, running all 64 is exact, so there is no random sampling.
+  const HIST = D.feasibility.history;
+  const projectById = new Map(D.projects.map((p) => [p.id, p]));
+  function openProject(id) {
+    hideTip();
+    selected = id;
+    select("projects", true);
+    renderProjects();
+    renderDetail(projectById.get(id), true);
+  }
+
+  function renderReplay(c) {
+    const npvs = F.replay(c, HIST.map((h) => h.pct));
+    const out = HIST.map((h, i) => ({ ...h, npv: npvs[i] }));
+    const n = out.length;
+    const clears = out.filter((o) => o.npv > 0).length;
+    const grew = out.filter((o) => o.pct > 0.5);
+    const grewClear = grew.filter((o) => o.npv > 0).length;
+    const be = F.breakevenOverrun(c);
+    const negative = F.summarize(c).npv <= 0;
+    const beyond = be == null ? null : out.filter((o) => o.pct > be * 100).length;
+    const med = (xs) => { const a = [...xs].sort((p, q) => p - q), k = a.length >> 1; return a.length % 2 ? a[k] : (a[k - 1] + a[k]) / 2; };
+    const which = exKey === "course" ? "the course example" : "the made-up example";
+
+    $("#replay-sub").textContent = `The overrun slider asks "what if?". This asks what happens if the project goes the way UVA's own projects went: each of the ${n} projects with two or more full budgets has its observed budget change applied to ${which} as a cost overrun, with your other settings kept. All ${n} are run, so there is no random sampling.`;
+    const tiles = [
+      { label: "Still clears the discount rate", value: `${clears} of ${n}`, note: `${Math.round((clears / n) * 100)}% of UVA's budget histories, applied to this example` },
+      { label: "Break-even overrun", value: be == null ? (negative ? "none" : "over +500%") : fmtPct(be * 100, 1, true),
+        note: be == null ? (negative ? "NPV is below zero before any overrun" : "No realistic overrun turns NPV negative")
+          : `${beyond} of ${n} UVA budgets grew more than this` },
+      { label: `If it goes like the ${grew.length} that grew`, value: fmtDollarsM(med(grew.map((o) => o.npv))),
+        note: `Median NPV; clears the discount rate in ${grewClear} of ${grew.length}` },
+    ];
+    const th = $("#replay-tiles"); th.replaceChildren();
+    for (const t of tiles) {
+      const d = el("div", { class: "stat" });
+      d.append(el("div", { class: "label" }, t.label), el("div", { class: "value" }, t.value), el("div", { class: "note" }, t.note));
+      th.append(d);
+    }
+    const unchanged = out.filter((o) => Math.abs(o.pct) < 1e-9).length;
+    replayChart($("#replay-chart"), c, out, be);
+    $("#replay-legend").textContent = `The line is the example's NPV at every overrun; each dot is a UVA project at its own budget change (the ${unchanged} unchanged projects share the dot at 0%, so it's drawn larger). Filled dots still clear the discount rate; hollow dots don't. Hover a dot, or tab to the chart and use the arrow keys; click or press Enter to open a project.`;
+    table($("#replay-table"), ["Project", "Budget change", "Example NPV with that change", "Clears the discount rate"],
+      [...out].sort((a, b) => b.pct - a.pct || a.id.localeCompare(b.id)).map((o) => [o.id, fmtPct(o.pct, 1, true), fmtDollarsM(o.npv), o.npv > 0 ? "yes" : "no"]));
+  }
+
+  function replayChart(host, c, out, be) {
+    host.replaceChildren();
+    const W = Math.max(320, host.clientWidth || 700), H = 300;
+    const m = { t: 22, r: 20, b: 42, l: 64 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const xs = niceRange(Math.min(0, ...out.map((o) => o.pct)), Math.max(...out.map((o) => o.pct)), W < 520 ? 4 : 7);
+    const x0 = xs[0], x1 = xs[xs.length - 1];
+    // the curve, sampled every half percent across the range
+    const curve = [];
+    for (let p = x0; p <= x1 + 1e-9; p += 0.5) curve.push([p, F.summarize(F.overrun(c, p / 100)).npv]);
+    const ys = niceRange(Math.min(0, ...curve.map((q) => q[1])) / 1e6, Math.max(0, ...curve.map((q) => q[1])) / 1e6, 5);
+    const y0 = ys[0], y1 = ys[ys.length - 1];
+    const x = (p) => m.l + ((p - x0) / (x1 - x0)) * iw;
+    const y = (v) => m.t + ih - ((v / 1e6 - y0) / (y1 - y0)) * ih;
+    const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Line chart of the example's NPV against cost overrun, with a dot for each UVA project's observed budget change" });
+    for (const t of ys) {
+      svg.append(sv("line", { x1: m.l, x2: m.l + iw, y1: y(t * 1e6), y2: y(t * 1e6), stroke: css(Math.abs(t) < 1e-9 ? "--axis" : "--grid"), "stroke-width": 1 }));
+      svg.append(sv("text", { x: m.l - 8, y: y(t * 1e6) + 4, "text-anchor": "end", "font-size": 11, fill: css("--muted") }, (t < 0 ? "−$" : "$") + Math.abs(t) + (t ? "M" : "")));
+    }
+    for (const t of xs) {
+      svg.append(sv("text", { x: x(t), y: H - m.b + 18, "text-anchor": "middle", "font-size": 11, fill: css("--muted") }, fmtPct(t, 0, true)));
+    }
+    svg.append(sv("text", { x: m.l + iw / 2, y: H - 4, "text-anchor": "middle", "font-size": 11, fill: css("--muted") }, "Budget change, applied as a cost overrun"));
+    const color = css("--s1"), warn = css("--s2");
+    if (be != null && be * 100 <= x1) {
+      const bx = x(be * 100);
+      const right = bx < m.l + iw - 130;
+      svg.append(sv("line", { x1: bx, x2: bx, y1: m.t, y2: m.t + ih, stroke: warn, "stroke-width": 1.5, "stroke-dasharray": "4 3" }));
+      svg.append(sv("text", { x: bx + (right ? 6 : -6), y: m.t + 10, "text-anchor": right ? "start" : "end", "font-size": 11.5, "font-weight": 600, fill: css("--ink") }, "Break-even " + fmtPct(be * 100, 1, true)));
+    }
+    svg.append(sv("path", { d: curve.map(([p, v], i) => `${i ? "L" : "M"}${x(p).toFixed(1)},${y(v).toFixed(1)}`).join(" "), fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }));
+    // one dot per distinct budget change; projects with the same change share it
+    const groups = [];
+    for (const o of [...out].sort((a, b) => a.pct - b.pct)) {
+      const g = groups[groups.length - 1];
+      if (g && Math.abs(g.pct - o.pct) < 1e-9) g.items.push(o); else groups.push({ pct: o.pct, npv: o.npv, items: [o] });
+    }
+    const ring = sv("circle", { r: 10, fill: "none", stroke: css("--ink"), "stroke-width": 1.5, visibility: "hidden", "pointer-events": "none" });
+    let cur = Math.max(0, groups.findIndex((g) => Math.abs(g.pct) < 1e-9));
+    const show = (i, e) => {
+      cur = Math.max(0, Math.min(groups.length - 1, i));
+      const g = groups[cur];
+      ring.setAttribute("cx", x(g.pct)); ring.setAttribute("cy", y(g.npv)); ring.setAttribute("visibility", "visible");
+      const single = g.items.length === 1;
+      const rows = [{ label: "Budget change", value: fmtPct(g.pct, 1, true) }, { color: g.npv > 0 ? color : warn, label: "Example NPV", value: fmtDollarsM(g.npv) }];
+      rows.push(single ? { label: "Click or Enter", value: "open the project" } : { label: "Listed in the table", value: "below" });
+      showTip(e, single ? g.items[0].id : `${g.items.length} projects`, rows);
+    };
+    const hide = () => { ring.setAttribute("visibility", "hidden"); hideTip(); };
+    // keyboard: one tab stop for the chart; arrow keys move between dots
+    const focusEvt = () => ({ target: ring, type: "focus" });
+    const kb = sv("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent", tabindex: 0, "pointer-events": "none", "aria-label": "Use the arrow keys to read each project's outcome; Enter opens a single project" });
+    kb.addEventListener("focus", () => show(cur, focusEvt()));
+    kb.addEventListener("blur", hide);
+    kb.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); show(cur + (e.key === "ArrowRight" ? 1 : -1), focusEvt()); }
+      if (e.key === "Enter" && groups[cur].items.length === 1) openProject(groups[cur].items[0].id);
+    });
+    svg.append(kb);
+    groups.forEach((g, i) => {
+      const ok = g.npv > 0;
+      const r = Math.min(9, 3.5 + Math.sqrt(g.items.length));
+      const dot = sv("circle", { cx: x(g.pct), cy: y(g.npv), r, fill: ok ? color : css("--surface"), stroke: ok ? css("--surface") : warn, "stroke-width": ok ? 1.5 : 2 });
+      dot.style.cursor = g.items.length === 1 ? "pointer" : "default";
+      dot.addEventListener("pointermove", (e) => show(i, e));
+      dot.addEventListener("pointerleave", hide);
+      dot.addEventListener("click", () => { if (g.items.length === 1) openProject(g.items[0].id); });
+      svg.append(dot);
+    });
+    svg.append(ring);
+    host.append(svg);
   }
 
   function lineChart(host, cum, ncf, disc) {
@@ -511,6 +634,8 @@
       ["p", `Construction costs rose fast over these years, so the "${REAL_YEAR} dollars" view restates every budget in ${REAL_YEAR} dollars using the Bureau of Labor Statistics producer price indexes for new building construction: new school buildings for the Academic Division and the College at Wise, new health care buildings for UVA Health, each at its June value (when the Board approves the plan). In those terms the ${s.tracked} tracked budgets went ${fmtPct(s.net_pct_real, 1, true)} overall instead of ${fmtPct(s.net_pct, 1, true)}: ${s.grew_real} kept ahead of construction costs and ${s.shrank_real} fell behind, and the ${s.flat_nominal_lost_real} budgets that never changed lost a median ${Math.abs(s.flat_nominal_median_real_pct)}% of their buying power. Two cautions: budgets are often set with some future cost escalation already built in, and a national index isn't UVA's own costs, so treat this as how far each authorized budget kept pace with the construction market, not as a measure of UVA's actual spending.`],
       ["h3", "The feasibility model"],
       ["p", `The model follows the cash-flow template from UVA's CE 3010 (Capital Projects) course: equity, loan proceeds, project expenses, revenue (effective gross income), operating costs, debt service and net cash flow each year, with NPV and IRR on the net cash flow. It reproduces the course's debt-financed example from lecture S19 (shown here with attribution) to within $1.10 of the slide's printed NPV, and it was also checked cell by cell against the course's example workbook, which isn't published here. The second example is made up for this site. The page runs a JavaScript copy of the model, tested to match the Python original on ${D.feasibility.checks.length} cases.`],
+      ["h3", "Replaying UVA's budget history"],
+      ["p", `The feasibility tab also runs each example through every observed budget change: for each of the ${D.feasibility.history.length} projects with two or more full budgets, its change from first to last full budget, as published (the example's costs are already in the dollars of the years they're spent), applied as a cost overrun paid in cash. With one source of uncertainty and ${D.feasibility.history.length} observations, running all of them gives the exact answer, so there is no random sampling. It treats them as equally likely futures, which they aren't quite: a budget change isn't a final cost, many projects were watched for only a few plans, and the plans don't record schedules, so delay stays a slider rather than part of the replay. The JavaScript replay is tested against the Python model too.`],
       ["h3", "Limits"],
       ["p", "Six plans is a short series. A capital plan authorizes budgets; it doesn't report what was spent, so budget change is not the same as a final cost overrun. Neither feasibility example is a real UVA project."],
     ];

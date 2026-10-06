@@ -20,6 +20,9 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
   measure.
 - **A 16.6% overrun is expensive.** On the course's example project, an overrun the size of that median cuts the
   NPV from $5.04M to $2.28M.
+- **Against UVA's own history, the example usually survives.** Run through all 64 observed budget changes, the
+  course example still clears its 3% discount rate in 58 of them. It breaks even at a +30.3% overrun, which 6 of
+  the 64 exceeded.
 
 ## What's on the site
 
@@ -29,7 +32,9 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
   published or in 2026 dollars.
 - **Feasibility:** a cash-flow model with sliders (discount rate, revenue and cost growth, first-year revenue,
   cost overrun, construction delay) on two example projects. The first is from UVA's CE 3010 course, used with
-  attribution; the second is made up.
+  attribution; the second is made up. Below the sliders, each example is replayed through every tracked
+  project's real budget change: how often it still clears its discount rate, the break-even overrun, and a chart
+  with one dot per project that links to that project.
 - **Method:** sources, parsing, linking and limits.
 
 ## How it works
@@ -66,8 +71,10 @@ On every push, GitHub Actions rebuilds the data, runs the tests, and only then d
   within $5 of the slide), every data row reconciles to its funding sources, the linking gives 94 projects, and the construction indexes
   cover every plan year with the expected deflators.
 - `tests/parity.js`: the JavaScript model matches the Python model on 26 cases (both examples, every slider driver
-  at a low and a high setting, a 30% overrun, a 3-year delay), to within a millionth of a dollar.
-- CI also fails if the committed `site/data.js` isn't what a fresh build produces.
+  at a low and a high setting, a 30% overrun, a 3-year delay) and on all 128 replayed outcomes and both break-even
+  overruns, to within a millionth of a dollar.
+- CI also fails if the committed `site/data.js` isn't what a fresh build produces. The build stamps each script
+  tag with a content hash, so a browser can't mix an old copy of one file with a new copy of another.
 
 ## Run it locally
 

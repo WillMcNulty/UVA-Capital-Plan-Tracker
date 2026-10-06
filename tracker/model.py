@@ -110,6 +110,25 @@ def overrun(c, pct):
     return replace(c, expenses={y: v * (1 + pct) for y, v in c.expenses.items()})
 
 
+def replay(c, changes):
+    """NPV of the case under each observed budget change (in percent), applied as a cost overrun."""
+    return [summarize(overrun(c, pct / 100))[0] for pct in changes]
+
+
+def breakeven_overrun(c, hi=5.0):
+    """The overrun (a fraction) at which NPV reaches zero; None if the case is already negative or never gets there."""
+    if summarize(c)[0] <= 0 or summarize(overrun(c, hi))[0] > 0:
+        return None
+    lo = 0.0
+    for _ in range(100):
+        mid = (lo + hi) / 2
+        if summarize(overrun(c, mid))[0] > 0:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
 def drivers(c):
     """(label, low case, high case) around the base."""
     return [

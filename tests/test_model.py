@@ -47,6 +47,22 @@ class MadeUpExample(unittest.TestCase):
         self.assertAlmostEqual(sum(c.equity.values()) + sum(c.loan.values()), cost + 0.02 * 45e6, places=2)
 
 
+class Replay(unittest.TestCase):
+    def test_no_change_is_the_base_npv(self):
+        c = examples.course_example()
+        self.assertAlmostEqual(model.replay(c, [0.0])[0], model.summarize(c)[0], places=6)
+
+    def test_breakeven_overrun_zeroes_npv(self):
+        for make in examples.EXAMPLES.values():
+            c = make()
+            b = model.breakeven_overrun(c)
+            self.assertIsNotNone(b)
+            self.assertLess(abs(model.summarize(model.overrun(c, b))[0]), 1e-3)
+
+    def test_course_example_breaks_even_near_30_percent(self):
+        self.assertAlmostEqual(model.breakeven_overrun(examples.course_example()), 0.303, places=3)
+
+
 class Linking(unittest.TestCase):
     def test_published_counts(self):
         rows = linking.load_rows()

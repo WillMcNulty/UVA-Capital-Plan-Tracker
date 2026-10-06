@@ -6,7 +6,7 @@
 <title>UVA Capital Plan Tracker</title>
 <meta name="description" content="An independent student analysis of the University of Virginia's public Major Capital Plans, 2021-2026: funding mix, project budgets across years, and a feasibility model.">
 <meta name="theme-color" content="#232d4b">
-<script src="theme.js"></script>
+<script src="theme.js?v=0b2b781f"></script>
 <style>
   /* Same design language as willmcnulty.github.io: UVA Blue and UVA Orange, system fonts only.
      Chart series colors (--s1..--s4) are UVA brand colors in light mode (Link Blue, Orange, Cyan, Green) and
@@ -329,6 +329,14 @@
         <div class="row"><button class="linkbtn" id="reset">Reset to the example</button></div>
       </div>
       <div class="card">
+        <h2>Against UVA's own budget history</h2>
+        <p class="sub" id="replay-sub"></p>
+        <div class="tiles" id="replay-tiles"></div>
+        <div id="replay-chart"></div>
+        <p class="sub" id="replay-legend"></p>
+        <details class="tableview"><summary>Show every project's outcome as a table</summary><div class="tablewrap" id="replay-table"></div></details>
+      </div>
+      <div class="card">
         <h2>Cumulative discounted cash flow</h2>
         <p class="sub" id="cum-sub">Running total of each year's net cash flow, discounted to year 0; the last point is the NPV</p>
         <div id="cum-chart"></div>
@@ -345,8 +353,8 @@
     <div class="wrap" id="footer"></div>
   </footer>
   <div id="tip" role="status" aria-live="polite"></div>
-  <script src="data.js"></script>
-  <script src="finance.js"></script>
-  <script src="app.js"></script>
+  <script src="data.js?v=85ce2b4e"></script>
+  <script src="finance.js?v=ab3dd681"></script>
+  <script src="app.js?v=d8b04106"></script>
 </body>
 </html>

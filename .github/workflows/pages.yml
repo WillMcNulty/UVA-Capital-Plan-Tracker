@@ -23,7 +23,7 @@ jobs:
       - name: Rebuild the data and check the published numbers
         run: python build.py
       - name: Committed data matches a fresh build
-        run: git diff --exit-code -- site/data.js data/project_tracks.csv
+        run: git diff --exit-code -- site/data.js site/index.html data/project_tracks.csv
       - name: Python tests
         run: python -m unittest discover tests -v
       - name: JavaScript model matches the Python model

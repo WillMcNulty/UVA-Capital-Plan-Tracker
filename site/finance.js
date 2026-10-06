@@ -85,7 +85,23 @@
     return { ...c, expenses: exp };
   }
 
-  const api = { ROWS, pmt, cashFlows, npv, irr, summarize, delayed, overrun };
+  // NPV of the case under each observed budget change (in percent), applied as a cost overrun.
+  function replay(c, changes) {
+    return changes.map((pct) => summarize(overrun(c, pct / 100)).npv);
+  }
+
+  // The overrun (a fraction) at which NPV reaches zero; null if the case is already negative or never gets there.
+  function breakevenOverrun(c, hi = 5.0) {
+    if (summarize(c).npv <= 0 || summarize(overrun(c, hi)).npv > 0) return null;
+    let lo = 0;
+    for (let k = 0; k < 100; k++) {
+      const mid = (lo + hi) / 2;
+      if (summarize(overrun(c, mid)).npv > 0) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  const api = { ROWS, pmt, cashFlows, npv, irr, summarize, delayed, overrun, replay, breakevenOverrun };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Finance = api;
 })(typeof window !== "undefined" ? window : globalThis);
