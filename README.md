@@ -36,6 +36,10 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
   project's real budget change: how often it still clears its discount rate, the break-even overrun, and a chart
   with one dot per project that links to that project.
 - **Method:** sources, parsing, linking and limits.
+- **A page for every project** ([`/projects/`](https://willmcnulty.github.io/UVA-Capital-Plan-Tracker/projects/)):
+  budget and funding year by year, earlier names, and the change as published and in 2026 dollars. The pages are
+  plain HTML (no JavaScript needed), so they can be shared and searched; each links into the tracker at
+  `#project=<slug>`, and any project opened in the tracker gets that address too.
 
 ## How it works
 
@@ -43,6 +47,7 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
 data/capital_plans.csv  ->  tracker/linking.py  ->  build.py  ->  site/data.js  ->  site/ (static page)
 data/project_overrides.csv      tracker/model.py + examples.py  ->  (feasibility cases)
 data/construction_ppi.csv  ->  tracker/inflation.py  ->  (2026-dollar figures)
+                                tracker/pages.py  ->  site/projects/<slug>/ + site/sitemap.xml
 ```
 
 - **Linking projects across years** (`tracker/linking.py`). Project names drift between plans: PDF spacing damage,
@@ -73,7 +78,7 @@ On every push, GitHub Actions rebuilds the data, runs the tests, and only then d
 - `tests/parity.js`: the JavaScript model matches the Python model on 26 cases (both examples, every slider driver
   at a low and a high setting, a 30% overrun, a 3-year delay) and on all 128 replayed outcomes and both break-even
   overruns, to within a millionth of a dollar.
-- CI also fails if the committed `site/data.js` isn't what a fresh build produces. The build stamps each script
+- CI also fails if the committed `site/data.js`, project pages or sitemap aren't what a fresh build produces. The build stamps each script
   tag with a content hash, so a browser can't mix an old copy of one file with a new copy of another.
 
 ## Run it locally

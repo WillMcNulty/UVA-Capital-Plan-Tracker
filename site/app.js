@@ -226,6 +226,18 @@
   // ---- projects ---------------------------------------------------------------------------------------------
   const P = D.projects;
   let selected = null;
+  // Opening a project puts it in the address (#project=<slug>), so the view can be shared; the same slug names its
+  // static page at projects/<slug>/.
+  function showProject(p, scroll = true) {
+    selected = p.id;
+    history.replaceState(null, "", "#project=" + p.slug);
+    renderProjects();
+    renderDetail(p, scroll);
+  }
+  const projectFromHash = () => {
+    const m = /^#project=([a-z0-9-]+)$/.exec(location.hash);
+    return m ? P.find((p) => p.slug === m[1]) : null;
+  };
   // "nominal" = as published; "real" = in the latest plan year's dollars, adjusted with BLS construction price
   // indexes (new school buildings; new health care buildings for UVA Health). See tracker/inflation.py.
   let dollars = "nominal";
@@ -294,7 +306,7 @@
         ch.append(bar, document.createTextNode(Math.abs(pct) < 0.005 ? "no change" : fmtPct(pct, 0, true)));
       } else ch.append(el("span", { class: "muted" }, "—"));
       tr.append(name, el("td", { class: "hide-sm" }, p.division), dc, el("td", { class: "num" }, p.latest_total ? fmtM(latestOf(p)) : "—"), ch);
-      const open = () => { selected = p.id; renderProjects(); renderDetail(p, true); };
+      const open = () => showProject(p);
       tr.addEventListener("click", open);
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
       tb.append(tr);
@@ -312,7 +324,7 @@
     const head = el("div", { class: "detail-head" });
     const left = el("div");
     left.append(el("h2", {}, p.id), el("p", { class: "sub" }, `${p.division} · latest status: ${p.status} · in ${p.years.length} of ${years.length} plans`));
-    head.append(left);
+    head.append(left, el("a", { href: `projects/${p.slug}/`, class: "pagelink" }, "Project page to share →"));
     host.append(head);
     const d = p.drift;
     let story;
@@ -446,10 +458,8 @@
   const projectById = new Map(D.projects.map((p) => [p.id, p]));
   function openProject(id) {
     hideTip();
-    selected = id;
-    select("projects", true);
-    renderProjects();
-    renderDetail(projectById.get(id), true);
+    select("projects", false);
+    showProject(projectById.get(id));
   }
 
   function renderReplay(c) {
@@ -674,6 +684,8 @@
   }
   window.addEventListener("hashchange", () => {
     const h = location.hash.slice(1);
+    const linked = projectFromHash();
+    if (linked) { select("projects", false); showProject(linked); return; }
     if (["overview", "projects", "feasibility", "about"].includes(h)) {
       select(h, false);
       document.querySelector(".tabs").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -688,5 +700,12 @@
   renderProjects();
   renderAbout();
   const start = location.hash.slice(1);
-  select(["overview", "projects", "feasibility", "about"].includes(start) ? start : "overview", false);
+  const linked = projectFromHash();
+  if (linked) {
+    select("projects", false);
+    showProject(linked, false);
+    // after load, so the browser's own scroll restoration can't undo it
+    const go = () => setTimeout(() => $("#detail").scrollIntoView({ block: "start", behavior: "instant" }), 0);
+    if (document.readyState === "complete") go(); else window.addEventListener("load", go, { once: true });
+  } else select(["overview", "projects", "feasibility", "about"].includes(start) ? start : "overview", false);
 })();

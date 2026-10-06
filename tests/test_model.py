@@ -105,5 +105,27 @@ class Inflation(unittest.TestCase):
         self.assertLess(last, first)
 
 
+class Pages(unittest.TestCase):
+    def test_slugs(self):
+        from tracker import pages
+        self.assertEqual(pages.slugify("Virginia Guesthouse (UVA Hotel & Conference Center)"),
+                         "virginia-guesthouse-uva-hotel-and-conference-center")
+        self.assertEqual(pages.slugify("Children's Hospital"), "childrens-hospital")
+        ps = [{"id": "A b"}, {"id": "a-b"}]
+        pages.assign_slugs(ps)
+        self.assertEqual([p["slug"] for p in ps], ["a-b", "a-b-2"])
+
+    def test_every_project_has_a_page(self):
+        import json
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "site", "data.js"), encoding="utf-8") as f:
+            src = f.read()
+        projects = json.loads(src[src.index("=") + 1:].strip().rstrip(";"))["projects"]
+        slugs = [p["slug"] for p in projects]
+        self.assertEqual(len(slugs), len(set(slugs)))
+        for s in slugs:
+            self.assertTrue(os.path.isfile(os.path.join(root, "site", "projects", s, "index.html")), s)
+
+
 if __name__ == "__main__":
     unittest.main()
