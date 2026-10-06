@@ -205,6 +205,14 @@ def project_page(p, data, real_year):
     legend = "".join(f'<span><i class="f-{k}"></i>{e(labels[k])}</span>' for k in used)
     tile_html = "".join(f'<div class="stat"><div class="label">{e(a)}</div><div class="value">{e(b)}</div><div class="note">{e(c)}</div></div>'
                         for a, b, c in tiles)
+    loc = p.get("loc") or {"basis": "unmapped", "note": ""}
+    if loc["basis"] == "unmapped":
+        where = f'<p class="sub">Not on the map of Grounds: {e(loc["note"])}.</p>'
+    else:
+        kind = "" if loc["basis"] == "building" else " (placed at the site, not a single building)"
+        osm = f'https://www.openstreetmap.org/{loc["osm"]}'
+        where = (f'<p class="sub">On the map at <a href="../../#map={p["slug"]}">{e(loc["place"])}</a>{kind}'
+                 + (f'. {e(loc["note"])}' if loc["note"] else "") + f'. <a href="{osm}">OpenStreetMap feature</a>.</p>')
     renamed = ""
     if earlier:
         renamed = ('<p class="sub">Also listed as: ' + "; ".join(f"<q>{e(n)}</q>" for n in earlier) + ".</p>")
@@ -214,6 +222,7 @@ def project_page(p, data, real_year):
 <h1>{e(p["id"])}</h1>
 <p class="meta">{e(p["division"])} · latest status: {e(p["status"])}</p>
 {renamed}
+{where}
 <div class="tiles">{tile_html}</div>
 <section class="card">
   <h2>Budget by funding source</h2>

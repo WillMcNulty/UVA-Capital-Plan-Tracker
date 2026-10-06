@@ -14,6 +14,7 @@ project to site/projects/ (tracker/pages.py).
 
 Usage: python build.py   (standard library only)
 """
+import csv
 import hashlib
 import json
 import os
@@ -187,6 +188,24 @@ def asset_versions():
     return out
 
 
+def load_locations(projects):
+    """data/project_locations.csv: every project's place on the map, matched by hand to an OpenStreetMap feature,
+    or the reason it isn't mapped. Stops if a project is missing or a mapped point falls outside the map's area."""
+    with open(os.path.join(HERE, "data", "project_locations.csv"), encoding="utf-8") as f:
+        rows = {r["project_id"]: r for r in csv.DictReader(f)}
+    ids = {p["id"] for p in projects}
+    assert set(rows) == ids, f"project_locations.csv: missing {sorted(ids - set(rows))}, unknown {sorted(set(rows) - ids)}"
+    for p in projects:
+        r = rows[p["id"]]
+        if r["basis"] == "unmapped":
+            p["loc"] = {"basis": "unmapped", "note": r["note"]}
+            continue
+        assert r["basis"] in ("building", "site"), r
+        lat, lon = float(r["lat"]), float(r["lon"])
+        assert 37.9 < lat < 38.2 and -78.7 < lon < -78.3, f"{p['id']}: {lat},{lon} is outside Charlottesville"
+        p["loc"] = {"basis": r["basis"], "place": r["place"], "lat": lat, "lon": lon, "osm": r["osm"], "note": r["note"]}
+
+
 def stamp_assets(versions):
     """Add a content hash to each script tag (`app.js?v=1a2b3c4d`), so a browser holding an older copy of one file
     can't run it against a newer copy of another."""
@@ -204,6 +223,7 @@ def main():
     summary = drift_summary(drift)
     total = check(years, funding, projects, summary)
     pages.assign_slugs(projects)
+    load_locations(projects)
     data = {
         "source": "UVA Major Capital Plans 2021-2026 (public Board of Visitors documents)",
         "years": years,

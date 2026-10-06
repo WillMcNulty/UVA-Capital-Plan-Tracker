@@ -30,6 +30,9 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
 - **Projects:** all 94 projects, searchable by any name they've had, filterable, with each project's budget and
   funding year by year and how each year's entry was linked to the others. A switch shows every figure as
   published or in 2026 dollars.
+- **Map:** 53 of the 94 projects on a map of Grounds, one marker per place, sized by budget, each matched by hand to
+  an OpenStreetMap building or site. The other 41 are listed with the reason they aren't mapped (the College at
+  Wise, off-Grounds sites, or no public location).
 - **Feasibility:** a cash-flow model with sliders (discount rate, revenue and cost growth, first-year revenue,
   cost overrun, construction delay) on two example projects. The first is from UVA's CE 3010 course, used with
   attribution; the second is made up. Below the sliders, each example is replayed through every tracked
@@ -46,6 +49,7 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
 ```
 data/capital_plans.csv  ->  tracker/linking.py  ->  build.py  ->  site/data.js  ->  site/ (static page)
 data/project_overrides.csv      tracker/model.py + examples.py  ->  (feasibility cases)
+data/project_locations.csv  ->  (map of Grounds; MapLibre + OpenFreeMap, loaded with the Map tab)
 data/construction_ppi.csv  ->  tracker/inflation.py  ->  (2026-dollar figures)
                                 tracker/pages.py  ->  site/projects/<slug>/ + site/sitemap.xml
 ```

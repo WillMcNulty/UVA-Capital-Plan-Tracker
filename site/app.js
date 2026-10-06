@@ -324,7 +324,10 @@
     const head = el("div", { class: "detail-head" });
     const left = el("div");
     left.append(el("h2", {}, p.id), el("p", { class: "sub" }, `${p.division} · latest status: ${p.status} · in ${p.years.length} of ${years.length} plans`));
-    head.append(left, el("a", { href: `projects/${p.slug}/`, class: "pagelink" }, "Project page to share →"));
+    const links = el("div", { class: "pagelinks" });
+    if (p.loc && p.loc.basis !== "unmapped") links.append(el("a", { href: `#map=${p.slug}`, class: "pagelink" }, "On the map"));
+    links.append(el("a", { href: `projects/${p.slug}/`, class: "pagelink" }, "Project page to share →"));
+    head.append(left, links);
     host.append(head);
     const d = p.drift;
     let story;
@@ -646,6 +649,8 @@
       ["p", `The model follows the cash-flow template from UVA's CE 3010 (Capital Projects) course: equity, loan proceeds, project expenses, revenue (effective gross income), operating costs, debt service and net cash flow each year, with NPV and IRR on the net cash flow. It reproduces the course's debt-financed example from lecture S19 (shown here with attribution) to within $1.10 of the slide's printed NPV, and it was also checked cell by cell against the course's example workbook, which isn't published here. The second example is made up for this site. The page runs a JavaScript copy of the model, tested to match the Python original on ${D.feasibility.checks.length} cases.`],
       ["h3", "Replaying UVA's budget history"],
       ["p", `The feasibility tab also runs each example through every observed budget change: for each of the ${D.feasibility.history.length} projects with two or more full budgets, its change from first to last full budget, as published (the example's costs are already in the dollars of the years they're spent), applied as a cost overrun paid in cash. With one source of uncertainty and ${D.feasibility.history.length} observations, running all of them gives the exact answer, so there is no random sampling. It treats them as equally likely futures, which they aren't quite: a budget change isn't a final cost, many projects were watched for only a few plans, and the plans don't record schedules, so delay stays a slider rather than part of the replay. The JavaScript replay is tested against the Python model too.`],
+      ["h3", "The map"],
+      ["p", `The plans don't give locations, so each project was matched by hand to a building or place in OpenStreetMap: ${mapped.length} of ${P.length} projects, at ${places.size} places. A filled marker means the project is that building (or its renovation or addition); a hollow one means it was placed at a site, such as Fontaine Research Park or the Darden School's grounds, because the plans name a site rather than a building. Projects whose location couldn't be confirmed from public sources aren't mapped, nor are those at the College at Wise or off Grounds; they're listed under the map. Every match and its basis is in data/project_locations.csv.`],
       ["h3", "Limits"],
       ["p", "Six plans is a short series. A capital plan authorizes budgets; it doesn't report what was spent, so budget change is not the same as a final cost overrun. Neither feasibility example is a real UVA project."],
     ];
@@ -657,7 +662,137 @@
     f.replaceChildren(el("div", {}, "Independent student project; not affiliated with or endorsed by the University of Virginia."), line2);
   }
 
+  // ---- map of Grounds ---------------------------------------------------------------------------------------
+  // One marker per place (several projects can share one), sized by the latest budgets there and colored by
+  // division. Filled: the project is that building. Hollow: placed at a site (a park, a school's grounds, a road).
+  // MapLibre (about 1 MB) loads only when the tab is first opened.
+  const DIV_VAR = { "Academic Division": "--s1", "UVA Health System": "--s2" };
+  const places = new Map();
+  for (const p of P) {
+    if (!p.loc || p.loc.basis === "unmapped") continue;
+    const key = p.loc.osm;
+    if (!places.has(key)) places.set(key, { key, place: p.loc.place, lat: p.loc.lat, lon: p.loc.lon, basis: "site", projects: [] });
+    const pl = places.get(key);
+    pl.projects.push(p);
+    if (p.loc.basis === "building") pl.basis = "building";  // hollow only when every project there is site-placed
+  }
+  for (const pl of places.values()) {
+    pl.projects.sort((a, b) => b.latest_total - a.latest_total);
+    pl.total = pl.projects.reduce((a, p) => a + (p.latest_total || 0), 0);
+    pl.division = pl.projects[0].division;
+  }
+  const mapped = P.filter((p) => p.loc && p.loc.basis !== "unmapped");
+  let mapApi = null, mapLoading = null, pendingPlace = null;
+
+  function placeFeatures() {
+    return { type: "FeatureCollection", features: [...places.values()].map((pl) => ({ type: "Feature",
+      geometry: { type: "Point", coordinates: [pl.lon, pl.lat] },
+      properties: { key: pl.key, total: pl.total, division: pl.division, hollow: pl.basis === "site" ? 1 : 0 } })) };
+  }
+
+  function renderMapText() {
+    const total = mapped.reduce((a, p) => a + p.latest_total, 0);
+    $("#map-sub").textContent = `${mapped.length} of ${P.length} projects, at ${places.size} places on Grounds and nearby, with ${fmtM(total)} in their latest budgets. Each marker is a place; its size is the latest budgets of the projects there. Select one to see them.`;
+    const leg = $("#map-legend"); leg.replaceChildren();
+    for (const [div, v] of Object.entries(DIV_VAR)) {
+      const sp = el("span"); const i = el("i", { class: "dot" }); i.style.background = css(v);
+      sp.append(i, document.createTextNode(div)); leg.append(sp);
+    }
+    const h = el("span"); h.append(el("i", { class: "dot hollow" }), document.createTextNode("Placed at a site, not one building")); leg.append(h);
+    const groups = new Map();
+    for (const p of P) if (p.loc && p.loc.basis === "unmapped") {
+      if (!groups.has(p.loc.note)) groups.set(p.loc.note, []);
+      groups.get(p.loc.note).push(p);
+    }
+    $("#unmapped-sub").textContent = `${P.length - mapped.length} projects aren't on the map: the College at Wise is 300 miles away, a few UVA Health and Northern Virginia sites are off Grounds, and for the rest the plans don't say where, and no public source confirmed it. Locations are only shown when they could be checked.`;
+    const host = $("#unmapped"); host.replaceChildren();
+    for (const [note, list] of [...groups.entries()].sort((a, b) => b[1].length - a[1].length)) {
+      const g = el("div", { class: "unmapped-group" });
+      g.append(el("h3", {}, `${note} (${list.length})`));
+      const ul = el("ul");
+      for (const p of list.sort((a, b) => a.id.localeCompare(b.id))) {
+        const li = el("li"); const a = el("a", { href: "#project=" + p.slug }, p.id);
+        li.append(a, document.createTextNode(` · ${fmtM(p.latest_total)}`)); ul.append(li);
+      }
+      g.append(ul); host.append(g);
+    }
+  }
+
+  async function renderMap() {
+    renderMapText();
+    if (mapApi) { mapApi.map.resize(); if (pendingPlace) { openPlace(pendingPlace, true); pendingPlace = null; } return; }
+    if (mapLoading) return;
+    const link = el("link", { rel: "stylesheet", href: "vendor/maplibre-gl.css" });
+    document.head.append(link);
+    mapLoading = import("./vendor/maplibre-gl.mjs").then((ml) => {
+      const isDark = () => (window.siteTheme ? window.siteTheme.effective() : "light") === "dark";
+      const styleUrl = () => `https://tiles.openfreemap.org/styles/${isDark() ? "dark" : "positron"}`;
+      const map = new ml.Map({ container: "grounds-map", style: styleUrl(), attributionControl: { compact: true }, cooperativeGestures: matchMedia("(pointer: coarse)").matches });
+      map.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
+      const pts = [...places.values()];
+      const bounds = [[Math.min(...pts.map((q) => q.lon)), Math.min(...pts.map((q) => q.lat))], [Math.max(...pts.map((q) => q.lon)), Math.max(...pts.map((q) => q.lat))]];
+      map.fitBounds(bounds, { padding: 40, animate: false });
+      const maxTotal = Math.max(...pts.map((q) => q.total));
+      function addLayers() {
+        const ring = css("--surface");
+        map.addSource("places", { type: "geojson", data: placeFeatures() });
+        const color = ["match", ["get", "division"], "UVA Health System", css("--s2"), css("--s1")];
+        // radius = base + span * sqrt(budget / largest), so a marker's area roughly tracks money
+        const r = (base, span) => ["+", base, ["*", span, ["sqrt", ["/", ["get", "total"], maxTotal]]]];
+        const radius = ["interpolate", ["linear"], ["zoom"], 12, r(3.5, 9), 14, r(4.5, 13), 17, r(6, 20)];
+        map.addLayer({ id: "places", type: "circle", source: "places", layout: { "circle-sort-key": ["-", 0, ["get", "total"]] }, paint: {
+          "circle-radius": radius, "circle-color": ["case", ["==", ["get", "hollow"], 1], ring, color],
+          "circle-opacity": 0.92, "circle-stroke-color": ["case", ["==", ["get", "hollow"], 1], color, ring],
+          "circle-stroke-width": ["case", ["==", ["get", "hollow"], 1], 3, 1.5] } });
+      }
+      map.on("style.load", addLayers);
+      window.addEventListener("themechange", () => map.setStyle(styleUrl()));
+      map.on("mouseenter", "places", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "places", () => { map.getCanvas().style.cursor = ""; });
+      map.on("click", "places", (e) => openPlace(places.get(e.features[0].properties.key)));
+      mapApi = { ml, map, popup: null };
+      map.once("load", () => {
+        map.resize();
+        if (pendingPlace) { openPlace(pendingPlace, true); pendingPlace = null; } else map.fitBounds(bounds, { padding: 40, animate: false });
+      });
+    });
+  }
+
+  function openPlace(pl, fly) {
+    if (!mapApi) { pendingPlace = pl; return; }
+    const { ml, map } = mapApi;
+    if (fly) map.flyTo({ center: [pl.lon, pl.lat], zoom: Math.max(map.getZoom(), 16), animate: false });
+    const box = el("div", { class: "pop" });
+    box.append(el("h3", {}, pl.place));
+    const notes = [...new Set(pl.projects.map((p) => p.loc.note).filter(Boolean))];
+    box.append(el("p", { class: "basis" }, (pl.basis === "site" ? "Placed at the site, not a single building. " : "") + notes.join(" ")));
+    const viaSite = pl.basis === "building" ? pl.projects.filter((p) => p.loc.basis === "site") : [];
+    const ul = el("ul");
+    for (const p of pl.projects) {
+      const li = el("li");
+      const a = el("a", { href: "#project=" + p.slug }, p.id);
+      li.append(a, document.createTextNode(" "), el("b", {}, fmtM(p.latest_total)), el("span", { class: "st" }, `${p.status}${p.drift && Math.abs(p.drift.delta) > 0.005 ? ` · budget ${fmtPct(p.drift.pct, 0, true)} since ${p.drift.first_year}` : ""}${viaSite.includes(p) ? " · placed at the site" : ""}`));
+      ul.append(li);
+    }
+    box.append(ul);
+    if (mapApi.popup) mapApi.popup.remove();
+    mapApi.popup = new ml.Popup({ maxWidth: "320px", focusAfterOpen: false }).setLngLat([pl.lon, pl.lat]).setDOMContent(box).addTo(map);
+  }
+  const placeOf = (p) => (p && p.loc && p.loc.basis !== "unmapped" ? places.get(p.loc.osm) : null);
+  const mapFromHash = () => {
+    const m = /^#map=([a-z0-9-]+)$/.exec(location.hash);
+    return m ? P.find((p) => p.slug === m[1]) : null;
+  };
+  function showOnMap(p) {
+    select("map", false);
+    history.replaceState(null, "", "#map=" + p.slug);
+    const pl = placeOf(p);
+    if (pl) openPlace(pl, true);
+    $("#grounds-map").scrollIntoView({ block: "center", behavior: "instant" });
+  }
+
   // ---- tabs & boot ------------------------------------------------------------------------------------------
+  const VIEWS = ["overview", "projects", "map", "feasibility", "about"];
   const tabs = [...document.querySelectorAll('[role="tab"]')];
   function select(id, push) {
     for (const t of tabs) {
@@ -680,13 +815,16 @@
   function renderVisible() {
     if (!$("#view-overview").hidden) renderFundingChart();
     if (!$("#view-feasibility").hidden) renderFeasibility();
+    if (!$("#view-map").hidden) renderMap();
     if (!$("#view-projects").hidden && selected) renderDetail(P.find((p) => p.id === selected));
   }
   window.addEventListener("hashchange", () => {
     const h = location.hash.slice(1);
     const linked = projectFromHash();
     if (linked) { select("projects", false); showProject(linked); return; }
-    if (["overview", "projects", "feasibility", "about"].includes(h)) {
+    const onMap = mapFromHash();
+    if (onMap) { showOnMap(onMap); return; }
+    if (VIEWS.includes(h)) {
       select(h, false);
       document.querySelector(".tabs").scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -700,12 +838,15 @@
   renderProjects();
   renderAbout();
   const start = location.hash.slice(1);
-  const linked = projectFromHash();
-  if (linked) {
+  const linked = projectFromHash(), onMap = mapFromHash();
+  // scroll after load, so the browser's own scroll restoration can't undo it
+  const afterLoad = (fn) => { const go = () => setTimeout(fn, 0); if (document.readyState === "complete") go(); else window.addEventListener("load", go, { once: true }); };
+  if (onMap) {
+    showOnMap(onMap);
+    afterLoad(() => $("#grounds-map").scrollIntoView({ block: "center", behavior: "instant" }));
+  } else if (linked) {
     select("projects", false);
     showProject(linked, false);
-    // after load, so the browser's own scroll restoration can't undo it
-    const go = () => setTimeout(() => $("#detail").scrollIntoView({ block: "start", behavior: "instant" }), 0);
-    if (document.readyState === "complete") go(); else window.addEventListener("load", go, { once: true });
-  } else select(["overview", "projects", "feasibility", "about"].includes(start) ? start : "overview", false);
+    afterLoad(() => $("#detail").scrollIntoView({ block: "start", behavior: "instant" }));
+  } else select(VIEWS.includes(start) ? start : "overview", false);
 })();

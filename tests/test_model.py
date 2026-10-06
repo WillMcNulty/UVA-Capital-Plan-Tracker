@@ -127,5 +127,32 @@ class Pages(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(root, "site", "projects", s, "index.html")), s)
 
 
+class Locations(unittest.TestCase):
+    def setUp(self):
+        import csv
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "data", "project_locations.csv"), encoding="utf-8") as f:
+            self.locs = list(csv.DictReader(f))
+        self.rows = linking.load_rows()
+        linking.link(self.rows, linking.load_overrides())  # sets each row's project_id
+
+    def test_every_project_has_a_reviewed_row(self):
+        self.assertEqual({r["project_id"] for r in self.locs}, set(linking.tracks_by_project(self.rows)))
+        for r in self.locs:
+            self.assertIn(r["basis"], ("building", "site", "unmapped"), r["project_id"])
+            if r["basis"] == "unmapped":
+                self.assertTrue(r["note"], f"{r['project_id']}: an unmapped project needs a reason")
+            else:
+                self.assertRegex(r["osm"], r"^(node|way|relation)/\d+$")
+                self.assertTrue(37.9 < float(r["lat"]) < 38.2 and -78.7 < float(r["lon"]) < -78.3, r["project_id"])
+
+    def test_college_at_wise_is_never_placed_in_charlottesville(self):
+        basis = {r["project_id"]: r["basis"] for r in self.locs}
+        wise = {r["project_id"] for r in self.rows if r["division"] == "College at Wise"}
+        self.assertTrue(wise)
+        for pid in wise:
+            self.assertEqual(basis[pid], "unmapped", pid)
+
+
 if __name__ == "__main__":
     unittest.main()
