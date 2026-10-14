@@ -166,7 +166,7 @@ Music Education Center,2021,full,single-name,College at Wise,In Planning/Design,
 Music Education Center,2022,full,single-name,College at Wise,Not Yet Initiated,Music Education Center,45.2,22.6,22.6,,
 Music Education Center,2023,full,single-name,College at Wise,In Planning/Design,Music Education Center,45.2,22.6,22.6,,
 Music Education Center,2024,full,single-name,College at Wise,Not Yet Initiated,Music Education Center,45.2,22.6,22.6,,
-North Grounds Parking Garage,2022,full,override-probable,Academic Division,Not Yet Initiated,Parking Garage,54,,,46.8,7.2
+North Grounds Parking Garage,2022,full,override-confirmed,Academic Division,Not Yet Initiated,Parking Garage,54,,,46.8,7.2
 North Grounds Parking Garage,2023,full,single-name,Academic Division,In Planning/Design,North Grounds Parking Garage,50,,,42.8,7.2
 North Grounds Parking Garage,2024,full,single-name,Academic Division,In Planning/Design,North Grounds Parking Garage,50,,,19.7,30.3
 North Grounds Parking Garage,2025,full,single-name,Academic Division,Under Construction,North Grounds Parking Garage,50,,,19.7,30.3
@@ -201,8 +201,8 @@ Replacement of the Chemistry Addition Chillers,2024,full,single-name,Academic Di
 Replacement of the Chemistry Addition Chillers,2025,full,single-name,Academic Division,In Planning/Design,Replacement of the Chemistry Addition Chillers,12,,,12,
 Replacement of the Chemistry Addition Chillers,2026,full,single-name,Academic Division,Under Construction,Replacement of the Chemistry Addition Chillers,12,,,12,
 Replacement of the Video Scoreboard at Scott Stadium,2023,full,single-name,Academic Division,In Planning/Design,Replacement of the Video Scoreboard at Scott Stadium,13.4,,5.4,,8
-Research Data Center,2023,planning,override-probable,Academic Division,In Planning/Design,Research Computing Data Center(planning/design),3,,,,3
-Research Data Center,2024,planning,override-probable,Academic Division,In Planning/Design,Research Computing Data Center(planning/design),3,,,,3
+Research Data Center,2023,planning,override-confirmed,Academic Division,In Planning/Design,Research Computing Data Center(planning/design),3,,,,3
+Research Data Center,2024,planning,override-confirmed,Academic Division,In Planning/Design,Research Computing Data Center(planning/design),3,,,,3
 Research Data Center,2025,full,single-name,Academic Division,In Planning/Design,Research Data Center,72,,,37,35
 Sandridge Science Center Lab Wing Renovation,2021,full,single-name,College at Wise,In Planning/Design,Sandridge Science Center Lab Wing Renovation,39.1,39.1,,,
 Sandridge Science Center Lab Wing Renovation,2022,full,single-name,College at Wise,Not Yet Initiated,Sandridge Science Center Lab Wing Renovation,39.1,39.1,,,
@@ -241,7 +241,7 @@ Technology Classroom Building,2023,full,single-name,College at Wise,In Planning/
 Technology Classroom Building,2024,full,single-name,College at Wise,Not Yet Initiated,Technology Classroom Building,66,66,,,
 Technology Classroom Building,2025,full,single-name,College at Wise,Not Yet Initiated,Technology Classroom Building,68.7,68.7,,,
 Technology Classroom Building,2026,full,single-name,College at Wise,Pending Future Funding,Technology Classroom Building,78.4,78.4,,,
-The Park Renovation (UVA Recreation),2024,planning,override-probable,Academic Division,Not Yet Initiated,The Park Complex Improvements(planning/design),1.5,,,,1.5
+The Park Renovation (UVA Recreation),2024,planning,override-confirmed,Academic Division,Not Yet Initiated,The Park Complex Improvements(planning/design),1.5,,,,1.5
 The Park Renovation (UVA Recreation),2025,full,single-name,Academic Division,In Planning/Design,The Park Renovation(UVA Recreation),8,,,8,
 The Park Renovation (UVA Recreation),2026,full,single-name,Academic Division,Under Construction,The Park Renovation(UVA Recreation),10,,,8,2
 UVA Community Health Gainesville Cancer Center Expansion,2025,full,single-name,UVA Health System,In Planning/Design,UVA Community Health Gainesville Cancer Center Expansion,12,,,,12

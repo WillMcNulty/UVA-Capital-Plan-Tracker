@@ -143,8 +143,8 @@ def check(years, funding, projects, summary):
     assert round(share(2021, "state_gf")) == 26 and round(share(2021, "debt")) == 40, "2021 funding shares"
     assert 9 <= round(share(2026, "state_gf")) <= 11, "2026 State GF share"
     assert len(projects) == 94, f"{len(projects)} projects, expected 94"
-    assert (summary["tracked"], summary["increased"], summary["unchanged"], summary["decreased"]) == (64, 23, 40, 1), summary
-    assert summary["net_pct"] == 9.3 and round(summary["median_increase_pct"]) == 17, summary
+    assert (summary["tracked"], summary["increased"], summary["unchanged"], summary["decreased"]) == (66, 24, 40, 2), summary
+    assert summary["net_pct"] == 9.1 and round(summary["median_increase_pct"]) == 17, summary
     return total
 
 

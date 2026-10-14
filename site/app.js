@@ -13,7 +13,7 @@
     "single-name": "same name every year",
     "exact-key": "same name, spelling or punctuation differs",
     "fuzzy": "near-identical name (fuzzy match, checked by hand)",
-    "override-confirmed": "renamed; link confirmed from the plans",
+    "override-confirmed": "renamed; link confirmed from the plans or Board of Visitors records",
     "override-probable": "probable link; kept out of totals",
   };
   const $ = (s, el = document) => el.querySelector(s);
@@ -456,7 +456,7 @@
 
   // ---- the example against UVA's own budget history ----------------------------------------------------------
   // Every tracked project's observed budget change, applied to the example as a cost overrun. With one source of
-  // uncertainty and 64 observations, running all 64 is exact, so there is no random sampling.
+  // uncertainty and 66 observations, running all 66 is exact, so there is no random sampling.
   const HIST = D.feasibility.history;
   const projectById = new Map(D.projects.map((p) => [p.id, p]));
   function openProject(id) {

@@ -71,8 +71,8 @@ class Linking(unittest.TestCase):
         drift = [d for d in linking.drift_table(tracks, conf) if d["conf"] == "confirmed"]
         self.assertEqual(len(rows), 286)
         self.assertEqual(len(tracks), 94)
-        self.assertEqual(len(drift), 64)
-        self.assertEqual(sum(d["delta"] > 0.005 for d in drift), 23)
+        self.assertEqual(len(drift), 66)
+        self.assertEqual(sum(d["delta"] > 0.005 for d in drift), 24)
 
     def test_every_row_reconciles(self):
         for r in linking.load_rows():

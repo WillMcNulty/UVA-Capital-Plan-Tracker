@@ -20,7 +20,7 @@ LINK_TEXT = {
     "single-name": "same name every year",
     "exact-key": "same name, spelling or punctuation differs",
     "fuzzy": "near-identical name (fuzzy match, checked by hand)",
-    "override-confirmed": "renamed; link confirmed from the plans",
+    "override-confirmed": "renamed; link confirmed from the plans or Board of Visitors records",
     "override-probable": "probable link; kept out of totals",
 }
 REDIRECTS = {}  # old slug -> current slug, for projects renamed after their page was published

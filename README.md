@@ -11,18 +11,18 @@ project's financial feasibility. Not affiliated with or endorsed by the Universi
 - **The funding mix moved from state money to debt.** The State General Fund's share of the plan fell from 26%
   (2021) to 9-11% (2024-2026). Debt rose from 40% to a 58% peak (2025), and institutional/cash funding from 12% to
   24-29%.
-- **Budgets that move mostly go up.** Of 64 projects with two or more full budgets, 23 increased, 40 stayed flat
-  and 1 fell. Together their budgets rose 9.3%, and the median increase was 16.6%. Most revisions came before
+- **Budgets that move mostly go up.** Of 66 projects with two or more full budgets, 24 increased, 40 stayed flat
+  and 2 fell. Together their budgets rose 9.1%, and the median increase was 17.4%. Most revisions came before
   construction started, and the increases were paid with debt while gifts fell away.
 - **After construction-cost inflation, most budgets shrank.** In 2026 dollars (BLS construction price indexes),
-  the same 64 budgets fell 7.5% together, and 52 of them lost buying power. The 40 that never changed lost a median
+  the same 66 budgets fell 7.6% together, and 53 of them lost buying power. The 40 that never changed lost a median
   13.5%. Budgets often build in escalation, and a national index isn't UVA's own costs, so read this as a rough
   measure.
-- **A 16.6% overrun is expensive.** On the course's example project, an overrun the size of that median cuts the
-  NPV from $5.04M to $2.28M.
-- **Against UVA's own history, the example usually survives.** Run through all 64 observed budget changes, the
-  course example still clears its 3% discount rate in 58 of them. It breaks even at a +30.3% overrun, which 6 of
-  the 64 exceeded.
+- **A 17.4% overrun is expensive.** On the course's example project, an overrun the size of that median cuts the
+  NPV from $5.04M to $2.15M.
+- **Against UVA's own history, the example usually survives.** Run through all 66 observed budget changes, the
+  course example still clears its 3% discount rate in 60 of them. It breaks even at a +30.3% overrun, which 6 of
+  the 66 exceeded.
 
 ## What's on the site
 

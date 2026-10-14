@@ -136,5 +136,5 @@ def drivers(c):
         ("Construction delay +1 / +2 years", delayed(c, 1), delayed(c, 2)),
         ("O&M growth 2% / 5% a year", replace(c, om_growth=0.02), replace(c, om_growth=0.05)),
         ("Revenue growth 2% / 4% a year", replace(c, egi_growth=0.02), replace(c, egi_growth=0.04)),
-        ("Cost overrun +7.5% / +16.6%", overrun(c, 0.075), overrun(c, 0.166)),
+        ("Cost overrun +7.5% / +17.4%", overrun(c, 0.075), overrun(c, 0.174)),
     ]
